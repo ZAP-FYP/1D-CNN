@@ -9,17 +9,36 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
+import time
 
 # Load X and y arrays from the saved files
-X = np.load('../YOLOPv2-1D_Coordinates/train_data/X.npy')   #X.npy
-y = np.load('../YOLOPv2-1D_Coordinates/train_data/y.npy')   #y.npy
+# X = np.load('X.npy')   #X.npy
+# y = np.load('y.npy')   #y.npy
 
+# X = np.load('train_data/IMG_0260.MOVX.npy')   
+# y = np.load('train_data/IMG_0260.MOVy.npy') 
+
+X_files = ['train_data/IMG_0260.MOVX.npy', 'train_data/IMG_0261.MOVX.npy']
+y_files = ['train_data/IMG_0260.MOVy.npy', 'train_data/IMG_0261.MOVy.npy']
+
+X_arrays = []
+y_arrays = []
+
+for file_path in X_files:
+    X_array = np.load(file_path)
+    X_arrays.append(X_array)
+X = np.vstack(X_arrays)  
+
+for file_path in y_files:
+    y_array = np.load(file_path)
+    y_arrays.append(y_array)
+y = np.vstack(y_arrays)  
 
 shape_X = X.shape
 shape_y = y.shape
 
-print(f"Shape of X: {shape_X}")
-print(f"Shape of y: {shape_y}")
+print(f"Shape of merged X: {shape_X}")
+print(f"Shape of merged y: {shape_y}")
 
 flatten_y = y.reshape((len(y), -1))
 
@@ -40,15 +59,22 @@ class ConvNet(nn.Module):
     def __init__(self, in_channels, in_seq_len):
         super(ConvNet, self).__init__()
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=120, kernel_size=5, stride=1, padding=2),
+            nn.Conv1d(in_channels=in_channels, out_channels=120, kernel_size=3, stride=1, padding=2),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Conv1d(in_channels=120, out_channels=60, kernel_size=5, stride=1, padding=2),
+            # nn.Conv1d(in_channels=120, out_channels=240, kernel_size=3, stride=1, padding=2),
+            # nn.ReLU(),
+            nn.Conv1d(in_channels=120, out_channels=60, kernel_size=3, stride=1, padding=2),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=5, stride=5),
         )
 
         self.flatten = nn.Flatten()
+
+        # k = in_seq_len
+        # for layer in self.conv_layers:
+        #     if isinstance(layer, nn.Conv1d):
+        #         k = (k + 2 * layer.padding[0] - layer.kernel_size[0]) // layer.stride[0] + 1
 
         k = (in_seq_len // 2) // 5
         self.fc_layers = nn.Sequential(
@@ -56,7 +82,7 @@ class ConvNet(nn.Module):
             nn.ReLU(),
             nn.Linear(1000, 100),
             nn.ReLU(),
-            nn.Linear(100, 625),
+            nn.Linear(100, 500),
             
         )
 
@@ -66,6 +92,9 @@ class ConvNet(nn.Module):
         x = self.fc_layers(x)
         return x
 
+
+
+start_time = time.time()
 
 num_epochs = 15
 batch_size = 5
@@ -115,6 +144,8 @@ for epoch in range(num_epochs):
 model.eval()
 se = 0
 samples_count = 0
+
+
 import os
 import matplotlib.pyplot as plt
 
@@ -137,8 +168,8 @@ with torch.no_grad():
         samples_count += labels.size(0)
 
         # Reshape labels and y_hat
-        labels = labels.view(labels.size(0), 5, 125)
-        y_hat = y_hat.view(y_hat.size(0), 5, 125)
+        labels = labels.view(labels.size(0), 5, 100)
+        y_hat = y_hat.view(y_hat.size(0), 5, 100)
 
         for i in range(labels.size(0)):  # Loop through each sample in the batch
             label_frame = labels[i]  # Get the label frame for this sample
@@ -166,3 +197,8 @@ with torch.no_grad():
 
 mse = se / samples_count
 print(f"MSE of test data: {mse:.3f}")
+
+end_time = time.time()
+execution_time = end_time - start_time
+
+print(f"Execution time: {execution_time} seconds")
