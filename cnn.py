@@ -68,9 +68,10 @@ files = ["1,2"]
 
 for file in files:
     # Load X and y arrays from the saved files
-    X = np.load(f'../YOLOPv2-1D_Coordinates/train_data/{file}X.npy')   #X.npy
-    y = np.load(f'../YOLOPv2-1D_Coordinates/train_data/{file}y.npy')   #y.npy
-
+    # X = np.load(f'../YOLOPv2-1D_Coordinates/train_data/{file}X.npy')   #X.npy
+    # y = np.load(f'../YOLOPv2-1D_Coordinates/train_data/{file}y.npy')   #y.npy
+    X = np.load(f'dataset/{file}X.npy')   #X.npy
+    y = np.load(f'dataset/{file}y.npy')
 
     shape_X = X.shape
     shape_y = y.shape
