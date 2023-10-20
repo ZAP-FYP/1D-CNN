@@ -61,22 +61,22 @@ class ConvNet(nn.Module):
         self.conv_layers = nn.Sequential(
             nn.Conv1d(in_channels=in_channels, out_channels=120, kernel_size=3, stride=1, padding=2),
             nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2),
-            # nn.Conv1d(in_channels=120, out_channels=240, kernel_size=3, stride=1, padding=2),
-            # nn.ReLU(),
-            nn.Conv1d(in_channels=120, out_channels=60, kernel_size=3, stride=1, padding=2),
+            # nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Conv1d(in_channels=120, out_channels=240, kernel_size=3, stride=1, padding=2),
             nn.ReLU(),
-            nn.MaxPool1d(kernel_size=5, stride=5),
+            nn.Conv1d(in_channels=240, out_channels=60, kernel_size=3, stride=1, padding=2),
+            nn.ReLU(),
+            # nn.MaxPool1d(kernel_size=5, stride=5),
         )
 
         self.flatten = nn.Flatten()
 
-        # k = in_seq_len
-        # for layer in self.conv_layers:
-        #     if isinstance(layer, nn.Conv1d):
-        #         k = (k + 2 * layer.padding[0] - layer.kernel_size[0]) // layer.stride[0] + 1
+        k = in_seq_len
+        for layer in self.conv_layers:
+            if isinstance(layer, nn.Conv1d):
+                k = (k + 2 * layer.padding[0] - layer.kernel_size[0]) // layer.stride[0] + 1
 
-        k = (in_seq_len // 2) // 5
+        # k = (in_seq_len // 2) // 5
         self.fc_layers = nn.Sequential(
             nn.Linear(60*k, 1000),
             nn.ReLU(),
@@ -202,3 +202,9 @@ end_time = time.time()
 execution_time = end_time - start_time
 
 print(f"Execution time: {execution_time} seconds")
+
+# total_params = sum(p.numel() for p in model.parameters())
+# print("Total Learnable Parameters:", total_params)
+
+for name, param in model.named_parameters():
+    print(f"Parameter name: {name}, Shape: {param.shape}")
