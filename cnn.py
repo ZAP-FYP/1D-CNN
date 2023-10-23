@@ -65,21 +65,39 @@ class ConvNet(nn.Module):
     
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
-files = ["IMG_0260.MOV", "IMG_0261.MOV"]
 
 X_files = []
 y_files = []
 
-for file in files:
-    X_file = np.load(f'../YOLOPv2-1D_Coordinates/train_data/long_video_files/{file}X.npy')
-    X_files.append(X_file)
+# Specify the directory path
+directory_path = '../YOLOPv2-1D_Coordinates/train_data'
+# Get a list of filenames in the directory
+filenames = os.listdir(directory_path)
+# Filter out directories, if needed
+folders = [filename for filename in filenames if not os.path.isfile(os.path.join(directory_path, filename))]
+print(folders)
 
-    y_file = np.load(f'../YOLOPv2-1D_Coordinates/train_data/long_video_files/{file}y.npy')
-    y_files.append(y_file)
+for folder in folders:
+    filenames = os.listdir(directory_path+"/"+folder)
+    print(filenames)
+    for file in filenames:
+        file = directory_path+"/"+folder+"/"+file
+        if file[-5:] == "X.npy":
+            # print("x file",file)
+            X_file = np.load(file)
+            X_files.append(X_file)
+        elif file[-5:] == "y.npy":
+            # print("yfile",file)
+
+            y_file = np.load(file)
+            y_files.append(y_file)
+
+
 
 X = np.vstack(X_files)  
 y = np.vstack(y_files)  
-
+np.save(f'FullX.npy', X)
+np.save(f'Fully.npy', y)
 shape_X = X.shape
 shape_y = y.shape
 
@@ -88,7 +106,7 @@ print(f"Shape of y: {shape_y}")
 
 flatten_y = y.reshape((len(y), -1))
 
-num_epochs = 15
+num_epochs = 50
 batch_size = 5
 learning_rate = 0.001
 
@@ -99,12 +117,17 @@ if not test_flag:
     idx = int(count)
 else:
     idx = int(count * 0.80)
+val_idx = int(idx* 0.80)
 
-train_dataset = VideoDataset(X[:idx], flatten_y[:idx])
+train_dataset = VideoDataset(X[:val_idx], flatten_y[:val_idx])
+validation_dataset = VideoDataset(X[val_idx:], flatten_y[val_idx:])
+
 test_dataset = VideoDataset(X[idx:], flatten_y[idx:])
 
 
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
+validation_loader = DataLoader(dataset=validation_dataset, batch_size=batch_size, shuffle=False)
+
 test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
 
@@ -133,9 +156,13 @@ if os.path.isfile(checkpoint_file):
     checkpoint = torch.load(checkpoint_file)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    # current_epoch = checkpoint['epoch']
+    current_epoch = checkpoint['epoch']
 
 if train_flag:
+    # Define early stopping parameters
+    patience = 5  # Number of consecutive epochs without improvement
+    best_val_loss = float('inf')
+    consecutive_no_improvement = 0
     for epoch in range(current_epoch, num_epochs):
         for i, (images, labels) in enumerate(train_loader):
             images = images.to(device)
@@ -150,19 +177,42 @@ if train_flag:
 
             total_steps += 1
 
-            if not (i + 1) % 200:
-                print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}')
+            # if not (i + 1) % 200:
+                # print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}')
 
             # Save a checkpoint periodically
             if total_steps % 5000 == 0:
                 save_checkpoint(epoch, model, optimizer, checkpoint_file)
 
-        # # If you want to pause after the first set of data
-        # if epoch == num_epochs // 2:
-        #     break
+        # Validate the model at the end of each epoch
+        with torch.no_grad():
+            model.eval()
+            val_loss = 0.0
+            for i, (val_images, val_labels) in enumerate(validation_loader):
+                val_images = val_images.to(device)
+                val_labels = val_labels.to(device)
 
+                val_outputs = model(val_images)
+                val_loss += criterion(val_outputs, val_labels).item()
+
+            val_loss /= len(test_loader)
+
+        print(f'Epoch [{epoch+1}/{num_epochs}], Validation Loss: {val_loss:.4f}')
+
+        # Check if validation loss has improved
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            consecutive_no_improvement = 0
+            save_checkpoint(epoch, model, optimizer, checkpoint_file)
+        else:
+            consecutive_no_improvement += 1
+
+        # Check for early stopping
+        if consecutive_no_improvement >= patience:
+            print(f'Early stopping at epoch {epoch+1}')
+            break
 # Save the final model checkpoint
-    save_checkpoint(num_epochs, model, optimizer, checkpoint_file)
+    # save_checkpoint(num_epochs, model, optimizer, checkpoint_file)
 if test_flag:
     model.eval()
     se = 0
