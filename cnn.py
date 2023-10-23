@@ -133,6 +133,8 @@ test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=Fa
 
 
 print(f"Len of train_dataset X: {len(train_dataset)}")
+print(f"Len of validation_dataset y: {len(validation_dataset)}")
+
 print(f"Len of test_dataset y: {len(test_dataset)}")
 
 model = ConvNet(in_channels, in_seq_len).to(device)
@@ -186,9 +188,7 @@ if train_flag:
                 print(f'Epoch [{epoch+1}/{num_epochs}] Current time:{datetime.now()}')
 
 
-            # Save a checkpoint periodically
-            # if total_steps % 5000 == 0:
-            #     save_checkpoint(epoch, model, optimizer, checkpoint_file)
+        save_checkpoint(epoch, model, optimizer, checkpoint_file)
 
         # Validate the model at the end of each epoch
         with torch.no_grad():
@@ -201,7 +201,7 @@ if train_flag:
                 val_outputs = model(val_images)
                 val_loss += criterion(val_outputs, val_labels).item()
 
-            val_loss /= len(test_loader)
+            val_loss /= len(validation_loader)
 
         print(f'Epoch [{epoch+1}/{num_epochs}], Training Loss: {train_loss:.4f} Validation Loss: {val_loss:.4f}')
 
@@ -209,7 +209,7 @@ if train_flag:
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             consecutive_no_improvement = 0
-            save_checkpoint(epoch, model, optimizer, checkpoint_file)
+            save_checkpoint(epoch, model, optimizer, "model/best_model_checkpoint.pth")
         else:
             consecutive_no_improvement += 1
 
