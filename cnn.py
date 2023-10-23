@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 import os
 from decouple import config
+from datetime import datetime
 
 
 
@@ -75,11 +76,11 @@ directory_path = '../YOLOPv2-1D_Coordinates/train_data'
 filenames = os.listdir(directory_path)
 # Filter out directories, if needed
 folders = [filename for filename in filenames if not os.path.isfile(os.path.join(directory_path, filename))]
-print(folders)
+# print(folders)
 
 for folder in folders:
     filenames = os.listdir(directory_path+"/"+folder)
-    print(filenames)
+    # print(filenames)
     for file in filenames:
         file = directory_path+"/"+folder+"/"+file
         if file[-5:] == "X.npy":
@@ -96,8 +97,8 @@ for folder in folders:
 
 X = np.vstack(X_files)  
 y = np.vstack(y_files)  
-np.save(f'FullX.npy', X)
-np.save(f'Fully.npy', y)
+# np.save(f'FullX.npy', X)
+# np.save(f'Fully.npy', y)
 shape_X = X.shape
 shape_y = y.shape
 
@@ -160,16 +161,20 @@ if os.path.isfile(checkpoint_file):
 
 if train_flag:
     # Define early stopping parameters
+    print("Starting training...")
     patience = 5  # Number of consecutive epochs without improvement
     best_val_loss = float('inf')
     consecutive_no_improvement = 0
     for epoch in range(current_epoch, num_epochs):
+        train_loss = 0.0
+
         for i, (images, labels) in enumerate(train_loader):
             images = images.to(device)
             labels = labels.to(device)
 
             y_hat = model(images)
             loss = criterion(y_hat, labels)
+            train_loss += loss.item()
 
             optimizer.zero_grad()
             loss.backward()
@@ -177,12 +182,13 @@ if train_flag:
 
             total_steps += 1
 
-            # if not (i + 1) % 200:
-                # print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}')
+            if not (i + 1) % 400:
+                print(f'Epoch [{epoch+1}/{num_epochs}] Current time:{datetime.now()}')
+
 
             # Save a checkpoint periodically
-            if total_steps % 5000 == 0:
-                save_checkpoint(epoch, model, optimizer, checkpoint_file)
+            # if total_steps % 5000 == 0:
+            #     save_checkpoint(epoch, model, optimizer, checkpoint_file)
 
         # Validate the model at the end of each epoch
         with torch.no_grad():
@@ -197,7 +203,7 @@ if train_flag:
 
             val_loss /= len(test_loader)
 
-        print(f'Epoch [{epoch+1}/{num_epochs}], Validation Loss: {val_loss:.4f}')
+        print(f'Epoch [{epoch+1}/{num_epochs}], Training Loss: {train_loss:.4f} Validation Loss: {val_loss:.4f}')
 
         # Check if validation loss has improved
         if val_loss < best_val_loss:
@@ -209,8 +215,11 @@ if train_flag:
 
         # Check for early stopping
         if consecutive_no_improvement >= patience:
+            print(f'best_val_loss {best_val_loss}')
             print(f'Early stopping at epoch {epoch+1}')
             break
+        print(f'best_val_loss {best_val_loss}')
+
 # Save the final model checkpoint
     # save_checkpoint(num_epochs, model, optimizer, checkpoint_file)
 if test_flag:
