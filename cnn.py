@@ -12,8 +12,24 @@ from torch.utils.data import Dataset, DataLoader
 import os
 from decouple import config
 from datetime import datetime
+from torchsummary import summary
 
+import sys
 
+class Tee(object):
+    def __init__(self, *files):
+        self.files = files
+    def write(self, obj):
+        for f in self.files:
+            f.write(obj)
+            f.flush() # If you want the output to be visible immediately
+    def flush(self) :
+        for f in self.files:
+            f.flush()
+
+f = open('model/log.txt', 'w')
+original = sys.stdout
+sys.stdout = Tee(sys.stdout, f)
 
 class VideoDataset(Dataset):
     def __init__(self, X, y):
@@ -33,31 +49,35 @@ class ConvNet(nn.Module):
     def __init__(self, in_channels, in_seq_len):
         super(ConvNet, self).__init__()
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=120, kernel_size=5, stride=3, padding=2),
+            nn.Conv1d(in_channels=in_channels, out_channels=1000, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=120, out_channels=60, kernel_size=5, stride=3, padding=2),
+            nn.Conv1d(in_channels=1000, out_channels=64, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            
+
         )
 
         self.flatten = nn.Flatten()
 
+        
+        self.fc_layers = nn.Sequential(
+            nn.Linear(6400, 100),
+            nn.ReLU(),
+
+            nn.Linear(100, 500),
+
+            
+        )
         # Calculate the output size after convolution without pooling
         k = in_seq_len
         for layer in self.conv_layers:
             if isinstance(layer, nn.Conv1d) :
                 k = (k + 2 * layer.padding[0] - layer.kernel_size[0]) // layer.stride[0] + 1
         print(f"k {k}")
-        self.fc_layers = nn.Sequential(
-            nn.Linear(60*k, 1000),
-            nn.ReLU(),
-            # nn.Dropout(0.5),  # Add dropout for regularization
-            nn.Linear(1000, 100),
-            nn.ReLU(),
-            # nn.Dropout(0.5), 
-            nn.Linear(100, 500),
-        )
-
+# nn.Dropout(0.5),  # Add dropout for regularization
+            # nn.Linear(1000, 100),
+            # nn.ReLU(),
+            # # nn.Dropout(0.5), 
+            # nn.Linear(100, 500),
     def forward(self, x):
         x = self.conv_layers(x)
         x = self.flatten(x)
@@ -66,32 +86,38 @@ class ConvNet(nn.Module):
     
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
+full_data_flag = config('FULL_DATA_FLAG', cast=bool)
 
 X_files = []
 y_files = []
-
 # Specify the directory path
 directory_path = '../YOLOPv2-1D_Coordinates/train_data'
-# Get a list of filenames in the directory
-filenames = os.listdir(directory_path)
-# Filter out directories, if needed
-folders = [filename for filename in filenames if not os.path.isfile(os.path.join(directory_path, filename))]
-# print(folders)
 
-for folder in folders:
-    filenames = os.listdir(directory_path+"/"+folder)
-    # print(filenames)
-    for file in filenames:
-        file = directory_path+"/"+folder+"/"+file
-        if file[-5:] == "X.npy":
-            # print("x file",file)
-            X_file = np.load(file)
-            X_files.append(X_file)
-        elif file[-5:] == "y.npy":
-            # print("yfile",file)
+if full_data_flag:
 
-            y_file = np.load(file)
-            y_files.append(y_file)
+    # Get a list of filenames in the directory
+    filenames = os.listdir(directory_path)
+    # Filter out directories, if needed
+    folders = [filename for filename in filenames if not os.path.isfile(os.path.join(directory_path, filename))]
+    # print(folders)
+
+    for folder in folders:
+        filenames = os.listdir(directory_path+"/"+folder)
+        # print(filenames)
+        for file in filenames:
+            file = directory_path+"/"+folder+"/"+file
+            if file[-5:] == "X.npy":
+                # print("x file",file)
+                X_file = np.load(file)
+                X_files.append(X_file)
+            elif file[-5:] == "y.npy":
+                # print("yfile",file)
+
+                y_file = np.load(file)
+                y_files.append(y_file)
+else:
+    X_files.append(np.load(directory_path+"/20221124/1,2X.npy"))
+    y_files.append(np.load(directory_path+"/20221124/1,2y.npy"))
 
 
 
@@ -136,6 +162,7 @@ print(f"Len of train_dataset X: {len(train_dataset)}")
 print(f"Len of validation_dataset y: {len(validation_dataset)}")
 
 print(f"Len of test_dataset y: {len(test_dataset)}")
+print(f"in_channels: {in_channels}")
 
 model = ConvNet(in_channels, in_seq_len).to(device)
 criterion = nn.MSELoss()
@@ -160,7 +187,7 @@ if os.path.isfile(checkpoint_file):
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     current_epoch = checkpoint['epoch']
-
+print(f"Model summary : {summary(model, (in_channels, in_seq_len))}")
 if train_flag:
     # Define early stopping parameters
     print("Starting training...")
@@ -187,6 +214,7 @@ if train_flag:
             if not (i + 1) % 400:
                 print(f'Epoch [{epoch+1}/{num_epochs}] Current time:{datetime.now()}')
 
+        train_loss /= len(train_loader)
 
         save_checkpoint(epoch, model, optimizer, checkpoint_file)
 
