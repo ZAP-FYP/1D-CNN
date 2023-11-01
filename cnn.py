@@ -15,7 +15,10 @@ from datetime import datetime
 from torchsummary import summary
 
 import sys
-
+model_name = "1ChannelCNN_1"
+checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
+if not os.path.exists("model/"+model_name):
+    os.makedirs("model/"+model_name)
 class Tee(object):
     def __init__(self, *files):
         self.files = files
@@ -27,7 +30,7 @@ class Tee(object):
         for f in self.files:
             f.flush()
 
-f = open('model/log.txt', 'w')
+f = open('model/'+model_name+'/log.txt', 'w')
 original = sys.stdout
 sys.stdout = Tee(sys.stdout, f)
 
@@ -49,9 +52,9 @@ class ConvNet(nn.Module):
     def __init__(self, in_channels, in_seq_len):
         super(ConvNet, self).__init__()
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=1000, kernel_size=5, stride=1, padding=2),
+            nn.Conv1d(in_channels=in_channels, out_channels=1, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=1000, out_channels=64, kernel_size=5, stride=1, padding=2),
+            nn.Conv1d(in_channels=1, out_channels=1, kernel_size=5, stride=1, padding=2),# Try for 5 channels
             nn.ReLU(),
 
         )
@@ -60,12 +63,9 @@ class ConvNet(nn.Module):
 
         
         self.fc_layers = nn.Sequential(
-            nn.Linear(6400, 100),
-            nn.ReLU(),
-
             nn.Linear(100, 500),
-
-            
+            nn.ReLU(),
+            # nn.Linear(50, 500), 
         )
         # Calculate the output size after convolution without pooling
         k = in_seq_len
@@ -83,7 +83,6 @@ class ConvNet(nn.Module):
         x = self.flatten(x)
         x = self.fc_layers(x)
         return x
-    
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
 full_data_flag = config('FULL_DATA_FLAG', cast=bool)
@@ -180,7 +179,7 @@ def save_checkpoint(epoch, model, optimizer, filename):
     }
     torch.save(checkpoint, filename)
 
-checkpoint_file = 'model/model_checkpoint.pth'
+
 if os.path.isfile(checkpoint_file):
     print("Loading saved model...")
     checkpoint = torch.load(checkpoint_file)
@@ -228,6 +227,34 @@ if train_flag:
 
                 val_outputs = model(val_images)
                 val_loss += criterion(val_outputs, val_labels).item()
+                            # Reshape labels and y_hat
+            labels = val_labels.view(val_labels.size(0), 5, 100)
+            y_hat = val_outputs.view(val_outputs.size(0), 5, 100)
+
+                # for i in range(labels.size(0)):  # Loop through each sample in the batch
+            label_frame = labels[0]  # Get the label frame for this sample
+            y_hat_frame = y_hat[0]  # Get the corresponding y_hat frame
+
+            # Create subfolders for each sample
+            output_folder = "visualizations/validation/"+model_name
+            sample_folder = os.path.join(output_folder, f"sample_{0}")
+            os.makedirs(sample_folder, exist_ok=True)
+
+            # Visualize and save each label and y_hat frame
+            for j in range(5):  # Loop through each frame in the sample
+                label_array = label_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+                y_hat_array = y_hat_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+
+                # Plot both label and y_hat arrays in the same figure
+                plt.figure(figsize=(8, 4))
+                plt.plot(label_array, label="Label Array")
+                plt.plot(y_hat_array, label="y_hat Array")
+                plt.title(f"Frame {j}")
+                plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
+
+                # Save the figure
+                plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
+                plt.close()
 
             val_loss /= len(validation_loader)
 
@@ -237,7 +264,7 @@ if train_flag:
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             consecutive_no_improvement = 0
-            save_checkpoint(epoch, model, optimizer, "model/best_model_checkpoint.pth")
+            save_checkpoint(epoch, model, optimizer, 'model/'+model_name+'/best_model_checkpoint.pth')
         else:
             consecutive_no_improvement += 1
 
@@ -259,7 +286,8 @@ if test_flag:
     # Assuming y_hat is your tensor with the same shape [5, 5, 125]
 
     # Create a directory to save the visualizations
-    output_folder = "visualizations"
+    output_folder = "visualizations/test/"+model_name
+
     os.makedirs(output_folder, exist_ok=True)
 
     with torch.no_grad():
@@ -275,32 +303,32 @@ if test_flag:
             samples_count += labels.size(0)
 
             # Reshape labels and y_hat
-            labels = labels.view(labels.size(0), 5, 100)
-            y_hat = y_hat.view(y_hat.size(0), 5, 100)
+        labels = labels.view(labels.size(0), 5, 100)
+        y_hat = y_hat.view(y_hat.size(0), 5, 100)
 
-            for i in range(labels.size(0)):  # Loop through each sample in the batch
-                label_frame = labels[i]  # Get the label frame for this sample
-                y_hat_frame = y_hat[i]  # Get the corresponding y_hat frame
+            # for i in range(labels.size(0)):  # Loop through each sample in the batch
+        label_frame = labels[i]  # Get the label frame for this sample
+        y_hat_frame = y_hat[i]  # Get the corresponding y_hat frame
 
-                # Create subfolders for each sample
-                sample_folder = os.path.join(output_folder, f"sample_{i}")
-                os.makedirs(sample_folder, exist_ok=True)
+        # Create subfolders for each sample
+        sample_folder = os.path.join(output_folder, f"sample_{i}")
+        os.makedirs(sample_folder, exist_ok=True)
 
-                # Visualize and save each label and y_hat frame
-                for j in range(5):  # Loop through each frame in the sample
-                    label_array = label_frame[j].cpu().detach().numpy()  # Convert to NumPy array
-                    y_hat_array = y_hat_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+        # Visualize and save each label and y_hat frame
+        for j in range(5):  # Loop through each frame in the sample
+            label_array = label_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+            y_hat_array = y_hat_frame[j].cpu().detach().numpy()  # Convert to NumPy array
 
-                    # Plot both label and y_hat arrays in the same figure
-                    plt.figure(figsize=(8, 4))
-                    plt.plot(label_array, label="Label Array")
-                    plt.plot(y_hat_array, label="y_hat Array")
-                    plt.title(f"Frame {j}")
-                    plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
+            # Plot both label and y_hat arrays in the same figure
+            plt.figure(figsize=(8, 4))
+            plt.plot(label_array, label="Label Array")
+            plt.plot(y_hat_array, label="y_hat Array")
+            plt.title(f"Frame {j}")
+            plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
 
-                    # Save the figure
-                    plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
-                    plt.close()
+            # Save the figure
+            plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
+            plt.close()
 
     mse = se / samples_count
     print(f"MSE of test data: {mse:.3f}")
