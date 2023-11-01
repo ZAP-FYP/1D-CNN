@@ -15,8 +15,8 @@ from datetime import datetime
 from torchsummary import summary
 
 import sys
-if os.getcwd() == "content/":
-    directory_path = 'content/train_data'
+if os.getcwd() == "/content":
+    directory_path = '/content/train_data'
 else:
     directory_path = '../YOLOPv2-1D_Coordinates/train_data'
 
@@ -94,7 +94,6 @@ full_data_flag = config('FULL_DATA_FLAG', cast=bool)
 
 X_files = []
 y_files = []
-# Specify the directory path
 
 if full_data_flag:
 
