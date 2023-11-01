@@ -20,7 +20,7 @@ if os.getcwd() == "/content":
 else:
     directory_path = '../YOLOPv2-1D_Coordinates/train_data'
 
-model_name = "1ChannelCNN_1"
+model_name = "1ChannelCNN_5_channels"
 checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
 if not os.path.exists("model/"+model_name):
     os.makedirs("model/"+model_name)
@@ -59,7 +59,7 @@ class ConvNet(nn.Module):
         self.conv_layers = nn.Sequential(
             nn.Conv1d(in_channels=in_channels, out_channels=1, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=1, out_channels=1, kernel_size=5, stride=1, padding=2),# Try for 5 channels
+            nn.Conv1d(in_channels=1, out_channels=5, kernel_size=5, stride=1, padding=2),# Try for 5 channels
             nn.ReLU(),
 
         )
@@ -68,9 +68,9 @@ class ConvNet(nn.Module):
 
         
         self.fc_layers = nn.Sequential(
-            nn.Linear(100, 500),
+            nn.Linear(500, 50),
             nn.ReLU(),
-            # nn.Linear(50, 500), 
+            nn.Linear(50, 500), 
         )
         # Calculate the output size after convolution without pooling
         k = in_seq_len
@@ -140,7 +140,7 @@ batch_size = 5
 learning_rate = 0.001
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+print("Device :",device)
 count, in_channels, in_seq_len = X.shape
 if not test_flag:
     idx = int(count)
