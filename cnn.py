@@ -83,9 +83,14 @@ class ConvNet(nn.Module):
         x = self.flatten(x)
         x = self.fc_layers(x)
         return x
+    
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
 full_data_flag = config('FULL_DATA_FLAG', cast=bool)
+future_f=config('FUTURE_FRAMES', cast=int)  #No of future frames to predict
+start_f=config('START_FUTURE', cast=int)    #Startinf future frame
+DRR = config('DATA_REDUCTION_RATE', cast=int)
+
 
 X_files = []
 y_files = []
@@ -145,8 +150,8 @@ else:
     idx = int(count * 0.80)
 val_idx = int(idx* 0.80)
 
-train_dataset = VideoDataset(X[:val_idx], flatten_y[:val_idx])
-validation_dataset = VideoDataset(X[val_idx:], flatten_y[val_idx:])
+train_dataset = VideoDataset(X[:val_idx:DRR], flatten_y[:val_idx:DRR])
+validation_dataset = VideoDataset(X[val_idx::DRR], flatten_y[val_idx::DRR])
 
 test_dataset = VideoDataset(X[idx:], flatten_y[idx:])
 
