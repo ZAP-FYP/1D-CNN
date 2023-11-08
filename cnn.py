@@ -1,7 +1,8 @@
+import sys
+import os
 import numpy as np
-import cv2
-import torch
-import numpy as np
+#import cv2
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,16 +10,13 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-import os
+
 from decouple import config
 from datetime import datetime
 from torchsummary import summary
 
-import sys
-model_name = "1ChannelCNN_1"
-checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
-if not os.path.exists("model/"+model_name):
-    os.makedirs("model/"+model_name)
+
+
 class Tee(object):
     def __init__(self, *files):
         self.files = files
@@ -30,7 +28,7 @@ class Tee(object):
         for f in self.files:
             f.flush()
 
-f = open('model/'+model_name+'/log.txt', 'w')
+f = open('model/log.txt', 'w')
 original = sys.stdout
 sys.stdout = Tee(sys.stdout, f)
 
@@ -50,47 +48,56 @@ class VideoDataset(Dataset):
 class ConvNet(nn.Module):
     
     def __init__(self, in_channels, in_seq_len):
+          #super(ConvNet, self).__init__()
+          #self.dropout = nn.Dropout(0.2)
+          #self.conv1 = nn.Conv1d(in_channels=in_channels, out_channels=future_f, kernel_size=5, stride=1, padding=2)
+          #self.conv2 = nn.Conv1d(in_channels=future_f, out_channels=future_f, kernel_size=5, stride=1, padding=2)
+          #self.conv2 = nn.Conv1d(in_channels=5, out_channels=5, kernel_size=3, stride=1, padding=1)
         super(ConvNet, self).__init__()
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=1, kernel_size=5, stride=1, padding=2),
+            nn.Conv1d(in_channels=in_channels, out_channels=future_f, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=1, out_channels=1, kernel_size=5, stride=1, padding=2),# Try for 5 channels
-            nn.ReLU(),
-
+            #nn.Conv1d(in_channels=5, out_channels=5, kernel_size=1, stride=1, padding=0),
+            #nn.ReLU(),
+            #nn.Conv1d(in_channels=120, out_channels=5, kernel_size=5, stride=3, padding=2),
+            #nn.ReLU()
         )
 
-        self.flatten = nn.Flatten()
+        #self.globalAvg = nn.AdaptiveAvgPool1d(10)
 
-        
         self.fc_layers = nn.Sequential(
-            nn.Linear(100, 500),
-            nn.ReLU(),
-            # nn.Linear(50, 500), 
+            nn.Linear(5*100, 500)
         )
-        # Calculate the output size after convolution without pooling
-        k = in_seq_len
-        for layer in self.conv_layers:
-            if isinstance(layer, nn.Conv1d) :
-                k = (k + 2 * layer.padding[0] - layer.kernel_size[0]) // layer.stride[0] + 1
-        print(f"k {k}")
-# nn.Dropout(0.5),  # Add dropout for regularization
-            # nn.Linear(1000, 100),
-            # nn.ReLU(),
-            # # nn.Dropout(0.5), 
-            # nn.Linear(100, 500),
+
     def forward(self, x):
         x = self.conv_layers(x)
-        x = self.flatten(x)
-        x = self.fc_layers(x)
+        #x=self.conv1(x)
+        #x=F.relu(x)
+        #x=self.conv2(x)
+        #x=F.relu(x)
+        #x= self.dropout(x)
+        #x=self.conv2(x)
+        #x=F.relu(x)
+        x = torch.flatten(x, 2)
+        #x = self.fc_layers(x)
+        #x = self.globalAvg(x)
+        #x = x.view(x.size(0), -1)
+        #print(f"Shape of output: {x.shape}")
+        
         return x
+    
+    
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
 full_data_flag = config('FULL_DATA_FLAG', cast=bool)
+future_f=config('FUTURE_FRAMES', cast=int)  #No of future frames to predict
+start_f=config('START_FUTURE', cast=int)    #Startinf future frame
+
 
 X_files = []
 y_files = []
 # Specify the directory path
-directory_path = '../YOLOPv2-1D_Coordinates/train_data'
+directory_path = 'dataset/train_data'
 
 if full_data_flag:
 
@@ -124,6 +131,7 @@ X = np.vstack(X_files)
 y = np.vstack(y_files)  
 # np.save(f'FullX.npy', X)
 # np.save(f'Fully.npy', y)
+y=y[:,start_f:(start_f+future_f),:]
 shape_X = X.shape
 shape_y = y.shape
 
@@ -132,9 +140,9 @@ print(f"Shape of y: {shape_y}")
 
 flatten_y = y.reshape((len(y), -1))
 
-num_epochs = 50
-batch_size = 5
-learning_rate = 0.001
+num_epochs = 150
+batch_size = 512
+learning_rate = 0.01
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -145,15 +153,16 @@ else:
     idx = int(count * 0.80)
 val_idx = int(idx* 0.80)
 
-train_dataset = VideoDataset(X[:val_idx], flatten_y[:val_idx])
-validation_dataset = VideoDataset(X[val_idx:], flatten_y[val_idx:])
+DRR = 100#Data reduction ratio
+#train_dataset = VideoDataset(X[:val_idx:5], y[:val_idx:5])
+train_dataset = VideoDataset(X[::DRR], y[::DRR]) #32000
+validation_dataset = VideoDataset(X[val_idx::DRR], y[val_idx::DRR])
 
-test_dataset = VideoDataset(X[idx:], flatten_y[idx:])
+test_dataset = VideoDataset(X[idx:], y[idx:])
 
 
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
 validation_loader = DataLoader(dataset=validation_dataset, batch_size=batch_size, shuffle=False)
-
 test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
 
@@ -179,14 +188,15 @@ def save_checkpoint(epoch, model, optimizer, filename):
     }
     torch.save(checkpoint, filename)
 
-
-if os.path.isfile(checkpoint_file):
+checkpoint_file = 'model/model_checkpoint.pth'
+if False: #os.path.isfile(checkpoint_file):
     print("Loading saved model...")
     checkpoint = torch.load(checkpoint_file)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     current_epoch = checkpoint['epoch']
-print(f"Model summary : {summary(model, (in_channels, in_seq_len))}")
+print(f"Model summary: {summary(model, (in_channels, in_seq_len))}")
+
 if train_flag:
     # Define early stopping parameters
     print("Starting training...")
@@ -210,8 +220,8 @@ if train_flag:
 
             total_steps += 1
 
-            if not (i + 1) % 400:
-                print(f'Epoch [{epoch+1}/{num_epochs}] Current time:{datetime.now()}')
+            if not (i + 1) % int(batch_size/4):
+                print(f'Epoch [{epoch+1}/{num_epochs}] Batch[{i}] Current time:{datetime.now()}')
 
         train_loss /= len(train_loader)
 
@@ -227,34 +237,6 @@ if train_flag:
 
                 val_outputs = model(val_images)
                 val_loss += criterion(val_outputs, val_labels).item()
-                            # Reshape labels and y_hat
-            labels = val_labels.view(val_labels.size(0), 5, 100)
-            y_hat = val_outputs.view(val_outputs.size(0), 5, 100)
-
-                # for i in range(labels.size(0)):  # Loop through each sample in the batch
-            label_frame = labels[0]  # Get the label frame for this sample
-            y_hat_frame = y_hat[0]  # Get the corresponding y_hat frame
-
-            # Create subfolders for each sample
-            output_folder = "visualizations/validation/"+model_name
-            sample_folder = os.path.join(output_folder, f"sample_{0}")
-            os.makedirs(sample_folder, exist_ok=True)
-
-            # Visualize and save each label and y_hat frame
-            for j in range(5):  # Loop through each frame in the sample
-                label_array = label_frame[j].cpu().detach().numpy()  # Convert to NumPy array
-                y_hat_array = y_hat_frame[j].cpu().detach().numpy()  # Convert to NumPy array
-
-                # Plot both label and y_hat arrays in the same figure
-                plt.figure(figsize=(8, 4))
-                plt.plot(label_array, label="Label Array")
-                plt.plot(y_hat_array, label="y_hat Array")
-                plt.title(f"Frame {j}")
-                plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
-
-                # Save the figure
-                plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
-                plt.close()
 
             val_loss /= len(validation_loader)
 
@@ -264,7 +246,7 @@ if train_flag:
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             consecutive_no_improvement = 0
-            save_checkpoint(epoch, model, optimizer, 'model/'+model_name+'/best_model_checkpoint.pth')
+            save_checkpoint(epoch, model, optimizer, "model/best_model_checkpoint.pth")
         else:
             consecutive_no_improvement += 1
 
@@ -275,9 +257,10 @@ if train_flag:
             break
         print(f'best_val_loss {best_val_loss}')
 
-# Save the final model checkpoint
-    # save_checkpoint(num_epochs, model, optimizer, checkpoint_file)
-if test_flag:
+    #Save the final model checkpoint
+    save_checkpoint(num_epochs, model, optimizer, checkpoint_file)
+    
+ if test_flag:
     model.eval()
     se = 0
     samples_count = 0
@@ -286,8 +269,7 @@ if test_flag:
     # Assuming y_hat is your tensor with the same shape [5, 5, 125]
 
     # Create a directory to save the visualizations
-    output_folder = "visualizations/test/"+model_name
-
+    output_folder = "visualizations"
     os.makedirs(output_folder, exist_ok=True)
 
     with torch.no_grad():
@@ -303,32 +285,102 @@ if test_flag:
             samples_count += labels.size(0)
 
             # Reshape labels and y_hat
-        labels = labels.view(labels.size(0), 5, 100)
-        y_hat = y_hat.view(y_hat.size(0), 5, 100)
+            images = images.view(labels.size(0), 10, 100)
+            labels = labels.view(labels.size(0), future_f, 100)
+            y_hat = y_hat.view(y_hat.size(0), future_f, 100)
 
-            # for i in range(labels.size(0)):  # Loop through each sample in the batch
-        label_frame = labels[i]  # Get the label frame for this sample
-        y_hat_frame = y_hat[i]  # Get the corresponding y_hat frame
+            for i in range(labels.size(0)):  # Loop through each sample in the batch
+                image_frame = images[i]  # Get the input for this sample
+                label_frame = labels[i]  # Get the label frame for this sample
+                y_hat_frame = y_hat[i]  # Get the corresponding y_hat frame
 
-        # Create subfolders for each sample
-        sample_folder = os.path.join(output_folder, f"sample_{i}")
-        os.makedirs(sample_folder, exist_ok=True)
+                # Create subfolders for each sample
+                sample_folder = os.path.join(output_folder, f"sample_{i}")
+                os.makedirs(sample_folder, exist_ok=True)
 
-        # Visualize and save each label and y_hat frame
-        for j in range(5):  # Loop through each frame in the sample
-            label_array = label_frame[j].cpu().detach().numpy()  # Convert to NumPy array
-            y_hat_array = y_hat_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+                # Visualize and save each label and y_hat frame
+                for j in range(future_f):  # Loop through each frame in the sample
+                    label_array = label_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+                    y_hat_array = y_hat_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+                    
 
-            # Plot both label and y_hat arrays in the same figure
-            plt.figure(figsize=(8, 4))
-            plt.plot(label_array, label="Label Array")
-            plt.plot(y_hat_array, label="y_hat Array")
-            plt.title(f"Frame {j}")
-            plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
+                    # Plot both label and y_hat arrays in the same figure
+                    plt.figure(figsize=(8, 4))
+                    plt.plot(label_array, label="Label Array")
+                    plt.plot(y_hat_array, label="y_hat Array")
+                    plt.title(f"Output Frame {j}")
+                    plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
 
-            # Save the figure
-            plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
-            plt.close()
+                    # Save the figure
+                    plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
+                    plt.close()
+
+                for j in range(10):  # Loop through each frame in the sample
+                    
+                    image_array = image_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+
+                    # Plot both label and y_hat arrays in the same figure
+                    plt.figure(figsize=(8, 4))
+                    plt.plot(image_array, label="Image Array")
+                    
+                    plt.title(f"Input Frame {j}")
+                    plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
+
+                    # Save the figure
+                    plt.savefig(os.path.join(sample_folder, f"input_{i}_frame_{j}.png"))
+                    plt.close()
 
     mse = se / samples_count
     print(f"MSE of test data: {mse:.3f}")
+
+if False:
+    output_folder = "Input_visualizations"
+    with torch.no_grad():
+        for images, labels in train_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+
+
+            #se += (loss.item() * labels.size(0))
+            #samples_count += labels.size(0)
+
+            # Reshape labels and y_hat
+            labels = labels.view(labels.size(0), future_f, 100)
+            images = images.view(images.size(0), 10, 100)
+
+            for i in range(labels.size(0)):  # Loop through each sample in the batch
+                label_frame = labels[i]  # Get the label frame for this sample
+                images_frame = images[i]  # Get the corresponding input frame
+
+                # Create subfolders for each sample
+                sample_folder = os.path.join(output_folder, f"sample_{i}")
+                os.makedirs(sample_folder, exist_ok=True)
+
+
+                # Visualize and save each training frame
+                for j in range(10):  # Loop through each frame in the sample
+                    image_array = images_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+
+                    # Plot both label and y_hat arrays in the same figure
+                    plt.figure(figsize=(8, 4))
+                    plt.plot(image_array, label="Input Array")
+                    plt.title(f"Input Frame {j}")
+
+                    # Save the figure
+                    plt.savefig(os.path.join(sample_folder, f"I_sample_{i}_frame_{j}.png"))
+                    plt.close()
+                    
+                # Visualize and save each label frame
+                for j in range(future_f):  # Loop through each frame in the sample
+                    label_array = label_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+
+                    # Plot both label and y_hat arrays in the same figure
+                    plt.figure(figsize=(8, 4))
+                    plt.plot(label_array, label="Label Array")
+                    plt.title(f"Label Frame {j}")
+
+                    # Save the figure
+                    plt.savefig(os.path.join(sample_folder, f"L_sample_{i}_frame_{j}.png"))
+                    plt.close()
+#os.chdir('D:\\UoM\\Research\\Drivable Area\\1D-CNN')
+#os.getcwd()

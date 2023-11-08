@@ -1,0 +1,3 @@
+TRAIN_FLAG = True
+TEST_FLAG = False
+FULL_DATA_FLAG = True
