@@ -97,7 +97,7 @@ start_f=config('START_FUTURE', cast=int)    #Startinf future frame
 X_files = []
 y_files = []
 # Specify the directory path
-directory_path = 'dataset/train_data'
+directory_path = '../YOLOPv2-1D_Coordinates/train_data'
 
 if full_data_flag:
 
@@ -260,7 +260,7 @@ if train_flag:
     #Save the final model checkpoint
     save_checkpoint(num_epochs, model, optimizer, checkpoint_file)
     
- if test_flag:
+if test_flag:
     model.eval()
     se = 0
     samples_count = 0
