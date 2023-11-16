@@ -13,6 +13,7 @@ import os
 from decouple import config
 from datetime import datetime
 from torchsummary import summary
+from data_creator import get_X_y
 
 import sys
 model_name = "1ChannelCNN_1"
@@ -50,85 +51,99 @@ class VideoDataset(Dataset):
 class ConvNet(nn.Module):
     
     def __init__(self, in_channels, in_seq_len):
+          #super(ConvNet, self).__init__()
+          #self.dropout = nn.Dropout(0.2)
+          #self.conv1 = nn.Conv1d(in_channels=in_channels, out_channels=future_f, kernel_size=5, stride=1, padding=2)
+          #self.conv2 = nn.Conv1d(in_channels=future_f, out_channels=future_f, kernel_size=5, stride=1, padding=2)
+          #self.conv2 = nn.Conv1d(in_channels=5, out_channels=5, kernel_size=3, stride=1, padding=1)
         super(ConvNet, self).__init__()
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=1, kernel_size=5, stride=1, padding=2),
+            nn.Conv1d(in_channels=in_channels, out_channels=20, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=1, out_channels=1, kernel_size=5, stride=1, padding=2),# Try for 5 channels
+            nn.Conv1d(in_channels=20, out_channels=1, kernel_size=1, stride=1, padding=0),
             nn.ReLU(),
-
+            #nn.Conv1d(in_channels=120, out_channels=5, kernel_size=5, stride=3, padding=2),
+            #nn.ReLU()
         )
 
-        self.flatten = nn.Flatten()
+        #self.globalAvg = nn.AdaptiveAvgPool1d(10)
 
-        
         self.fc_layers = nn.Sequential(
-            nn.Linear(100, 500),
-            nn.ReLU(),
-            # nn.Linear(50, 500), 
+            nn.Linear(5*100, 500)
         )
-        # Calculate the output size after convolution without pooling
-        k = in_seq_len
-        for layer in self.conv_layers:
-            if isinstance(layer, nn.Conv1d) :
-                k = (k + 2 * layer.padding[0] - layer.kernel_size[0]) // layer.stride[0] + 1
-        print(f"k {k}")
-# nn.Dropout(0.5),  # Add dropout for regularization
-            # nn.Linear(1000, 100),
-            # nn.ReLU(),
-            # # nn.Dropout(0.5), 
-            # nn.Linear(100, 500),
+
     def forward(self, x):
         x = self.conv_layers(x)
-        x = self.flatten(x)
-        x = self.fc_layers(x)
+        #x=self.conv1(x)
+        #x=F.relu(x)
+        #x=self.conv2(x)
+        #x=F.relu(x)
+        #x= self.dropout(x)
+        #x=self.conv2(x)
+        #x=F.relu(x)
+        x = torch.flatten(x, 2)
+        #x = self.fc_layers(x)
+        #x = self.globalAvg(x)
+        #x = x.view(x.size(0), -1)
+        #print(f"Shape of output: {x.shape}")
+        
         return x
+    
     
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
 full_data_flag = config('FULL_DATA_FLAG', cast=bool)
+prev_f = config('PREV_FRAMES', cast=int)
 future_f=config('FUTURE_FRAMES', cast=int)  #No of future frames to predict
 start_f=config('START_FUTURE', cast=int)    #Startinf future frame
 DRR = config('DATA_REDUCTION_RATE', cast=int)
 
 
-X_files = []
-y_files = []
-# Specify the directory path
-directory_path = '../YOLOPv2-1D_Coordinates/train_data'
+# X_files = []
+# y_files = []
+# # Specify the directory path
+# directory_path = '../YOLOPv2-1D_Coordinates/train_data'
 
-if full_data_flag:
+# if full_data_flag:
 
-    # Get a list of filenames in the directory
-    filenames = os.listdir(directory_path)
-    # Filter out directories, if needed
-    folders = [filename for filename in filenames if not os.path.isfile(os.path.join(directory_path, filename))]
-    # print(folders)
+#     # Get a list of filenames in the directory
+#     filenames = os.listdir(directory_path)
+#     # Filter out directories, if needed
+#     folders = [filename for filename in filenames if not os.path.isfile(os.path.join(directory_path, filename))]
+#     # print(folders)
 
-    for folder in folders:
-        filenames = os.listdir(directory_path+"/"+folder)
-        # print(filenames)
-        for file in filenames:
-            file = directory_path+"/"+folder+"/"+file
-            if file[-5:] == "X.npy":
-                # print("x file",file)
-                X_file = np.load(file)
-                X_files.append(X_file)
-            elif file[-5:] == "y.npy":
-                # print("yfile",file)
+#     for folder in folders:
+#         filenames = os.listdir(directory_path+"/"+folder)
+#         # print(filenames)
+#         for file in filenames:
+#             file = directory_path+"/"+folder+"/"+file
+#             if file[-5:] == "X.npy":
+#                 # print("x file",file)
+#                 X_file = np.load(file)
+#                 X_files.append(X_file)
+#             elif file[-5:] == "y.npy":
+#                 # print("yfile",file)
 
-                y_file = np.load(file)
-                y_files.append(y_file)
-else:
-    X_files.append(np.load(directory_path+"/20221124/1,2X.npy"))
-    y_files.append(np.load(directory_path+"/20221124/1,2y.npy"))
+#                 y_file = np.load(file)
+#                 y_files.append(y_file)
+# else:
+#     X_files.append(np.load(directory_path+"/20221124/1,2X.npy"))
+#     y_files.append(np.load(directory_path+"/20221124/1,2y.npy"))
 
 
 
-X = np.vstack(X_files)  
-y = np.vstack(y_files)  
+# X = np.vstack(X_files)  
+# y = np.vstack(y_files)  
 # np.save(f'FullX.npy', X)
 # np.save(f'Fully.npy', y)
+
+X, y = get_X_y(prev_f, future_f)
+
+X = np.array(X)
+y = np.array(y)
+
+
+# y=y[:,start_f:(start_f+future_f),:]
 shape_X = X.shape
 shape_y = y.shape
 
@@ -150,8 +165,10 @@ else:
     idx = int(count * 0.80)
 val_idx = int(idx* 0.80)
 
-train_dataset = VideoDataset(X[:val_idx:DRR], flatten_y[:val_idx:DRR])
-validation_dataset = VideoDataset(X[val_idx::DRR], flatten_y[val_idx::DRR])
+# train_dataset = VideoDataset(X[:val_idx:DRR], flatten_y[:val_idx:DRR])
+# validation_dataset = VideoDataset(X[val_idx::DRR], flatten_y[val_idx::DRR])
+train_dataset = VideoDataset(X[::DRR], y[::DRR]) #32000
+validation_dataset = VideoDataset(X[val_idx::DRR], y[val_idx::DRR])
 
 test_dataset = VideoDataset(X[idx:], flatten_y[idx:])
 
@@ -233,8 +250,8 @@ if train_flag:
                 val_outputs = model(val_images)
                 val_loss += criterion(val_outputs, val_labels).item()
                             # Reshape labels and y_hat
-            labels = val_labels.view(val_labels.size(0), 5, 100)
-            y_hat = val_outputs.view(val_outputs.size(0), 5, 100)
+            labels = val_labels.view(val_labels.size(0), 1, 100)
+            y_hat = val_outputs.view(val_outputs.size(0), 1, 100)
 
                 # for i in range(labels.size(0)):  # Loop through each sample in the batch
             label_frame = labels[0]  # Get the label frame for this sample
@@ -246,20 +263,20 @@ if train_flag:
             os.makedirs(sample_folder, exist_ok=True)
 
             # Visualize and save each label and y_hat frame
-            for j in range(5):  # Loop through each frame in the sample
-                label_array = label_frame[j].cpu().detach().numpy()  # Convert to NumPy array
-                y_hat_array = y_hat_frame[j].cpu().detach().numpy()  # Convert to NumPy array
+            # for j in range(5):  # Loop through each frame in the sample
+            label_array = label_frame.cpu().detach().numpy()  # Convert to NumPy array
+            y_hat_array = y_hat_frame.cpu().detach().numpy()  # Convert to NumPy array
 
-                # Plot both label and y_hat arrays in the same figure
-                plt.figure(figsize=(8, 4))
-                plt.plot(label_array, label="Label Array")
-                plt.plot(y_hat_array, label="y_hat Array")
-                plt.title(f"Frame {j}")
-                plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
+            # Plot both label and y_hat arrays in the same figure
+            plt.figure(figsize=(8, 4))
+            plt.plot(label_array, label="Label Array")
+            plt.plot(y_hat_array, label="y_hat Array")
+            plt.title(f"Frame {future_f}")
+            plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
 
-                # Save the figure
-                plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
-                plt.close()
+            # Save the figure
+            plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{future_f}.png"))
+            plt.close()
 
             val_loss /= len(validation_loader)
 
