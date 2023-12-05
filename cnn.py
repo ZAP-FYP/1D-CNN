@@ -16,7 +16,7 @@ from torchsummary import summary
 from data_creator import get_X_y
 
 import sys
-model_name = "1ChannelCNN_1"
+model_name = "GAP-3CNNLayers"
 checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
 if not os.path.exists("model/"+model_name):
     os.makedirs("model/"+model_name)
@@ -58,15 +58,15 @@ class ConvNet(nn.Module):
           #self.conv2 = nn.Conv1d(in_channels=5, out_channels=5, kernel_size=3, stride=1, padding=1)
         super(ConvNet, self).__init__()
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=20, kernel_size=5, stride=1, padding=2),
+            nn.Conv1d(in_channels=in_channels, out_channels=5, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=20, out_channels=1, kernel_size=1, stride=1, padding=0),
+            nn.Conv1d(in_channels=5, out_channels=10, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            #nn.Conv1d(in_channels=120, out_channels=5, kernel_size=5, stride=3, padding=2),
-            #nn.ReLU()
+            nn.Conv1d(in_channels=10, out_channels=1, kernel_size=5, stride=3, padding=2),
+            nn.ReLU()
         )
 
-        #self.globalAvg = nn.AdaptiveAvgPool1d(10)
+        self.globalAvg = nn.AdaptiveAvgPool1d(100)
 
         self.fc_layers = nn.Sequential(
             nn.Linear(5*100, 500)
@@ -80,15 +80,15 @@ class ConvNet(nn.Module):
         #x=F.relu(x)
         #x= self.dropout(x)
         #x=self.conv2(x)
+        x = self.globalAvg(x)
         #x=F.relu(x)
-        x = torch.flatten(x, 2)
+        # x = torch.flatten(x, 2)
         #x = self.fc_layers(x)
-        #x = self.globalAvg(x)
-        #x = x.view(x.size(0), -1)
+        # x = x.view(x.size(0), -1)
         #print(f"Shape of output: {x.shape}")
         
         return x
-    
+                
     
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
@@ -209,6 +209,7 @@ if os.path.isfile(checkpoint_file):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     current_epoch = checkpoint['epoch']
 print(f"Model summary : {summary(model, (in_channels, in_seq_len))}")
+
 if train_flag:
     # Define early stopping parameters
     print("Starting training...")
@@ -269,8 +270,8 @@ if train_flag:
 
             # Plot both label and y_hat arrays in the same figure
             plt.figure(figsize=(8, 4))
-            plt.plot(label_array, label="Label Array")
-            plt.plot(y_hat_array, label="y_hat Array")
+            plt.plot(label_array[0], label="Label Array")
+            plt.plot(y_hat_array[0], label="y_hat Array")
             plt.title(f"Frame {future_f}")
             plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
 
