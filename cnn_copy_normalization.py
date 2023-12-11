@@ -15,7 +15,7 @@ from datetime import datetime
 from torchsummary import summary
 import sys
 
-model_name = "1ChannelCNN_18"
+model_name = "1ChannelCNN_20"
 checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
 if not os.path.exists("model/"+model_name):
     os.makedirs("model/"+model_name)
@@ -47,43 +47,43 @@ class VideoDataset(Dataset):
         return self.n_samples
 
 
-class ConvNet(nn.Module):
-    def __init__(self, in_channels, in_seq_len):
-        super(ConvNet, self).__init__()
-        self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=5, kernel_size=5, stride=3, padding=2), 
-            nn.ReLU(),
-            # nn.Conv1d(in_channels=240, out_channels=120, kernel_size=5, stride=3, padding=2), 
-            # nn.ReLU(),
-            nn.Conv1d(in_channels=5, out_channels=5, kernel_size=5, stride=3, padding=2), 
-            nn.ReLU(),
-            # nn.Conv1d(in_channels=5, out_channels=5, kernel_size=5, stride=1, padding=2), 
-            # nn.ReLU()
-        )
+# class ConvNet(nn.Module):
+#     def __init__(self, in_channels, in_seq_len):
+#         super(ConvNet, self).__init__()
+#         self.conv_layers = nn.Sequential(
+#             nn.Conv1d(in_channels=in_channels, out_channels=5, kernel_size=5, stride=3, padding=2), 
+#             nn.ReLU(),
+#             # nn.Conv1d(in_channels=240, out_channels=120, kernel_size=5, stride=3, padding=2), 
+#             # nn.ReLU(),
+#             nn.Conv1d(in_channels=5, out_channels=5, kernel_size=5, stride=3, padding=2), 
+#             nn.ReLU(),
+#             # nn.Conv1d(in_channels=5, out_channels=5, kernel_size=5, stride=1, padding=2), 
+#             # nn.ReLU()
+#         )
 
-        # self.flatten = nn.Flatten()
+#         # self.flatten = nn.Flatten()
 
         
-        # self.fc_layers = nn.Sequential(
-        #     nn.Linear(500, 50),
-        #     nn.ReLU(),
-        #     nn.Linear(50, 500), 
-        # )
-        self.globalAvg = nn.AdaptiveAvgPool1d (100)
-        # self.fc_layers = nn.Sequential(
-        #     nn.Linear (60, 500)
-        # )
+#         # self.fc_layers = nn.Sequential(
+#         #     nn.Linear(500, 50),
+#         #     nn.ReLU(),
+#         #     nn.Linear(50, 500), 
+#         # )
+#         self.globalAvg = nn.AdaptiveAvgPool1d (100)
+#         # self.fc_layers = nn.Sequential(
+#         #     nn.Linear (60, 500)
+#         # )
         
         
        
         
-    def forward(self, x) :
-        x = self.conv_layers(x)
-        # x = self. flatten (x)
-        x = self.globalAvg(x)
-        x = x.view(x.size (0), -1)
-        # x = self.fc_layers(x)
-        return x
+#     def forward(self, x) :
+#         x = self.conv_layers(x)
+#         # x = self. flatten (x)
+#         x = self.globalAvg(x)
+#         x = x.view(x.size (0), -1)
+#         # x = self.fc_layers(x)
+#         return x
     
     # def forward(self, x):
     #     x = self.conv_layers(x)
@@ -125,7 +125,52 @@ class ConvNet(nn.Module):
 #         x = self.flatten(x)
 #         x = self.fc_layers(x)
 #         return x
-    
+
+class ConvNet(nn.Module):
+    def __init__(self, in_channels, in_seq_len, dropout_rate=0.5):
+        super(ConvNet, self).__init__()
+
+        self.normalization = nn.BatchNorm1d(in_channels)
+
+        self.conv_layers = nn.Sequential(
+            nn.Conv1d(in_channels=in_channels, out_channels=64, kernel_size=3, stride=1, padding=1), 
+            nn.LeakyReLU(),
+            nn.Dropout(p=dropout_rate),
+            
+            nn.Conv1d(in_channels=64, out_channels=64, kernel_size=5, stride=1, padding=2), 
+            nn.LeakyReLU(),
+            nn.Dropout(p=dropout_rate),
+            
+            nn.Conv1d(in_channels=64, out_channels=64, kernel_size=7, stride=1, padding=3), 
+            nn.LeakyReLU(),
+            nn.Dropout(p=dropout_rate),
+            
+            nn.Conv1d(in_channels=64, out_channels=9, kernel_size=3, stride=1, padding=1), 
+            nn.LeakyReLU(),
+            nn.Dropout(p=dropout_rate),
+            
+            nn.Conv1d(in_channels=9, out_channels=9, kernel_size=5, stride=1, padding=2), 
+            nn.LeakyReLU(),
+            nn.Dropout(p=dropout_rate),
+        )
+
+        self.flatten = nn.Flatten()
+        
+        self.fc_layers = nn.Sequential(
+            nn.Linear(900, 500),  # Adjust the multiplier based on your input sequence length
+            nn.LeakyReLU(),
+            nn.Dropout(p=dropout_rate)
+        )
+        
+    def forward(self, x):
+        x = self.normalization(x)
+        
+        x = self.conv_layers(x)
+        x = self.flatten(x)
+        x = self.fc_layers(x)
+        return x
+
+
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
 full_data_flag = config('FULL_DATA_FLAG', cast=bool)
