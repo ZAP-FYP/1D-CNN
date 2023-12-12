@@ -13,10 +13,10 @@ import os
 from decouple import config
 from datetime import datetime
 from torchsummary import summary
-from data_creator import get_X_y
+from data_creator import get_X_y, get_simple_dataset, get_simplest_dataset
 
 import sys
-model_name = "GAP-3CNNLayers"
+model_name = "Simplest data CNNLayers"
 checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
 if not os.path.exists("model/"+model_name):
     os.makedirs("model/"+model_name)
@@ -51,19 +51,12 @@ class VideoDataset(Dataset):
 class ConvNet(nn.Module):
     
     def __init__(self, in_channels, in_seq_len):
-          #super(ConvNet, self).__init__()
-          #self.dropout = nn.Dropout(0.2)
-          #self.conv1 = nn.Conv1d(in_channels=in_channels, out_channels=future_f, kernel_size=5, stride=1, padding=2)
-          #self.conv2 = nn.Conv1d(in_channels=future_f, out_channels=future_f, kernel_size=5, stride=1, padding=2)
-          #self.conv2 = nn.Conv1d(in_channels=5, out_channels=5, kernel_size=3, stride=1, padding=1)
         super(ConvNet, self).__init__()
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=5, kernel_size=5, stride=1, padding=2),
+            nn.Conv1d(in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=5, out_channels=10, kernel_size=5, stride=1, padding=2),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=10, out_channels=1, kernel_size=5, stride=3, padding=2),
-            nn.ReLU()
+            # nn.Conv1d(in_channels=10, out_channels=1, kernel_size=1, stride=1, padding=2),
+            # nn.ReLU()
         )
 
         self.globalAvg = nn.AdaptiveAvgPool1d(100)
@@ -99,45 +92,7 @@ start_f=config('START_FUTURE', cast=int)    #Startinf future frame
 DRR = config('DATA_REDUCTION_RATE', cast=int)
 
 
-# X_files = []
-# y_files = []
-# # Specify the directory path
-# directory_path = '../YOLOPv2-1D_Coordinates/train_data'
-
-# if full_data_flag:
-
-#     # Get a list of filenames in the directory
-#     filenames = os.listdir(directory_path)
-#     # Filter out directories, if needed
-#     folders = [filename for filename in filenames if not os.path.isfile(os.path.join(directory_path, filename))]
-#     # print(folders)
-
-#     for folder in folders:
-#         filenames = os.listdir(directory_path+"/"+folder)
-#         # print(filenames)
-#         for file in filenames:
-#             file = directory_path+"/"+folder+"/"+file
-#             if file[-5:] == "X.npy":
-#                 # print("x file",file)
-#                 X_file = np.load(file)
-#                 X_files.append(X_file)
-#             elif file[-5:] == "y.npy":
-#                 # print("yfile",file)
-
-#                 y_file = np.load(file)
-#                 y_files.append(y_file)
-# else:
-#     X_files.append(np.load(directory_path+"/20221124/1,2X.npy"))
-#     y_files.append(np.load(directory_path+"/20221124/1,2y.npy"))
-
-
-
-# X = np.vstack(X_files)  
-# y = np.vstack(y_files)  
-# np.save(f'FullX.npy', X)
-# np.save(f'Fully.npy', y)
-
-X, y = get_X_y(prev_f, future_f)
+X, y = get_simplest_dataset()
 
 X = np.array(X)
 y = np.array(y)
@@ -167,8 +122,13 @@ val_idx = int(idx* 0.80)
 
 # train_dataset = VideoDataset(X[:val_idx:DRR], flatten_y[:val_idx:DRR])
 # validation_dataset = VideoDataset(X[val_idx::DRR], flatten_y[val_idx::DRR])
-train_dataset = VideoDataset(X[::DRR], y[::DRR]) #32000
-validation_dataset = VideoDataset(X[val_idx::DRR], y[val_idx::DRR])
+
+if DRR != 0:
+    train_dataset = VideoDataset(X[::DRR], y[::DRR]) #32000
+    validation_dataset = VideoDataset(X[val_idx::DRR], y[val_idx::DRR])
+else:
+    train_dataset = VideoDataset(X[::], y[::]) #32000
+    validation_dataset = VideoDataset(X[val_idx::], y[val_idx::])
 
 test_dataset = VideoDataset(X[idx:], flatten_y[idx:])
 
@@ -200,8 +160,6 @@ def save_checkpoint(epoch, model, optimizer, filename):
         'optimizer_state_dict': optimizer.state_dict(),
     }
     torch.save(checkpoint, filename)
-
-
 if os.path.isfile(checkpoint_file):
     print("Loading saved model...")
     checkpoint = torch.load(checkpoint_file)
@@ -209,6 +167,7 @@ if os.path.isfile(checkpoint_file):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     current_epoch = checkpoint['epoch']
 print(f"Model summary : {summary(model, (in_channels, in_seq_len))}")
+
 
 if train_flag:
     # Define early stopping parameters
