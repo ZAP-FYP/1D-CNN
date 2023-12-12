@@ -1,9 +1,9 @@
-import numpy as np
-import cv2
-import torch
-import numpy as np
 import torch
 import torch.nn as nn
+import numpy as np
+import cv2
+import numpy as np
+import torch
 import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
@@ -16,13 +16,13 @@ from torchsummary import summary
 from data_creator import get_X_y
 
 import sys
-model_name = "5th_frame/2ChannelCNN_GA_new"
+model_name = "ConvLSTM/2ChannelCNN_GA_new"
 
 num_epochs = 1000
 batch_size = 25
 learning_rate = 0.001
 
-checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
+checkpoint_file = 'model/ConvLSTM/'+model_name+'/model_checkpoint.pth'
 if not os.path.exists("model/"+model_name):
     os.makedirs("model/"+model_name)
 class Tee(object):
@@ -52,53 +52,69 @@ class VideoDataset(Dataset):
     def __len__(self):
         return self.n_samples
 
+class ConvLSTM1D(nn.Module):
+    def __init__(self, input_size, hidden_size, kernel_size, num_layers):
+        super(ConvLSTM1D, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.kernel_size = kernel_size
+        self.num_layers = num_layers
 
-class ConvNet(nn.Module):
-    
-    def __init__(self, in_channels, in_seq_len):
-        super(ConvNet, self).__init__()
-        self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=1, kernel_size=5, stride=1, padding=2),
-            nn.ReLU(),
-            # nn.Conv1d(in_channels=50, out_channels=100, kernel_size=5, stride=1, padding=2),
-            # nn.ReLU(),
-            # nn.Conv1d(in_channels=100, out_channels=60, kernel_size=5, stride=1, padding=2),            
-            # nn.ReLU(),
-            # nn.Conv1d(in_channels=60, out_channels=1, kernel_size=5, stride=1, padding=2),
-            # # nn.Conv1d(in_channels=50, out_channels=1, kernel_size=5, stride=1, padding=2),
-            # # nn.ReLU(),
-        )
+        # Convolutional LSTM layers
+        self.conv_lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
 
-        self.globalAvg = nn.AdaptiveAvgPool1d(100)
-        # self.flatten = nn.Flatten()
+        # Fully connected layer to map the LSTM output to the desired output size
+        self.fc = nn.Linear(hidden_size, input_size)
 
-        
-        # self.fc_layers = nn.Sequential(
-        #     nn.Linear(100, 100),
-        #     nn.ReLU(),
-        #     # nn.Linear(50, 500), 
-        # )
-        
     def forward(self, x):
-        x = self.conv_layers(x)
-        # x = self.flatten(x)
-        # x = self.fc_layers(x)
-        #x=self.conv1(x)
-        #x=F.relu(x)
-        #x=self.conv2(x)
-        #x=F.relu(x)
-        #x= self.dropout(x)
-        #x=self.conv2(x)
-        #x=F.relu(x)
-        # x = torch.flatten(x, 2)
-        #x = self.fc_layers(x)
-        x = self.globalAvg(x)
-        #x = x.view(x.size(0), -1)
-        #print(f"Shape of output: {x.shape}")
-        
-        return x
-    
-    
+        # Input shape: (batch_size, sequence_length, input_size)
+
+        # print("Input Shape:", x.shape)
+
+        # Initialize hidden and cell states
+        batch_size, _, _ = x.size()
+        h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
+        c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
+
+        # ConvLSTM forward pass
+        lstm_out, _ = self.conv_lstm(x, (h0, c0))
+
+        # print("LSTM Output Shape:", lstm_out.shape)
+
+        # Take the output of the last time step
+        lstm_last_output = lstm_out[:, -1, :]
+
+        # Fully connected layer
+        output = self.fc(lstm_last_output)
+
+        print("Output Shape:", output.shape)
+
+        return output
+
+input_size = 100
+hidden_size = 50
+kernel_size = 3
+num_layers = 3
+model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
+
+
+
+# Modify the following lines accordingly
+# in_channels = 20
+# in_seq_len = 100
+# hidden_size = 100
+# kernel_size = 3
+# output_size = 100
+
+input_size = 100
+hidden_size = 50
+kernel_size = 3
+num_layers = 3
+model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
 full_data_flag = config('FULL_DATA_FLAG', cast=bool)
@@ -108,51 +124,12 @@ start_f=config('START_FUTURE', cast=int)    #Startinf future frame
 DRR = config('DATA_REDUCTION_RATE', cast=int)
 
 
-# X_files = []
-# y_files = []
-# # Specify the directory path
-# directory_path = '../YOLOPv2-1D_Coordinates/train_data'
-
-# if full_data_flag:
-
-#     # Get a list of filenames in the directory
-#     filenames = os.listdir(directory_path)
-#     # Filter out directories, if needed
-#     folders = [filename for filename in filenames if not os.path.isfile(os.path.join(directory_path, filename))]
-#     # print(folders)
-
-#     for folder in folders:
-#         filenames = os.listdir(directory_path+"/"+folder)
-#         # print(filenames)
-#         for file in filenames:
-#             file = directory_path+"/"+folder+"/"+file
-#             if file[-5:] == "X.npy":
-#                 # print("x file",file)
-#                 X_file = np.load(file)
-#                 X_files.append(X_file)
-#             elif file[-5:] == "y.npy":
-#                 # print("yfile",file)
-
-#                 y_file = np.load(file)
-#                 y_files.append(y_file)
-# else:
-#     X_files.append(np.load(directory_path+"/20221124/1,2X.npy"))
-#     y_files.append(np.load(directory_path+"/20221124/1,2y.npy"))
-
-
-
-# X = np.vstack(X_files)  
-# y = np.vstack(y_files)  
-# np.save(f'FullX.npy', X)
-# np.save(f'Fully.npy', y)
-
 X, y = get_X_y(prev_f, future_f)
 
 X = np.array(X)
 y = np.array(y)
 
 
-# y=y[:,start_f:(start_f+future_f),:]
 shape_X = X.shape
 shape_y = y.shape
 
@@ -192,12 +169,10 @@ print(f"Len of validation_dataset y: {len(validation_dataset)}")
 print(f"Len of test_dataset y: {len(test_dataset)}")
 print(f"in_channels: {in_channels}")
 
-model = ConvNet(in_channels, in_seq_len).to(device)
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
 current_epoch = 0
 total_steps = 0
+
+
 
 def save_checkpoint(epoch, model, optimizer, filename):
     print("Saving model checkpoint...")
@@ -215,7 +190,7 @@ if os.path.isfile(checkpoint_file):
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     current_epoch = checkpoint['epoch']
-print(f"Model summary : {summary(model, (in_channels, in_seq_len))}")
+# print(f"Model summary : {summary(model, (in_channels, in_seq_len))}")
 if train_flag:
     # Define early stopping parameters
     print("Starting training...")
@@ -228,8 +203,14 @@ if train_flag:
         for i, (images, labels) in enumerate(train_loader):
             images = images.to(device)
             labels = labels.to(device)
+            print(f"images.size() {images.size()}")
 
             y_hat = model(images)
+            # Reshape y_hat to match the size of labels along the second dimension
+            # y_hat_reshaped = y_hat.view(labels.size(0), labels.size(1), -1)
+            print(f"Size of y_hat: {y_hat.size()}")
+            # print(f"Size of y_hat_reshaped: {y_hat_reshaped.size()}")
+            print(f"Size of labels: {labels.size()}")   
             loss = criterion(y_hat, labels)
             train_loss += loss.item()
 
@@ -244,7 +225,7 @@ if train_flag:
 
         train_loss /= len(train_loader)
 
-        save_checkpoint(epoch, model, optimizer, checkpoint_file)
+        # save_checkpoint(epoch, model, optimizer, checkpoint_file)
 
         # Validate the model at the end of each epoch
         with torch.no_grad():
@@ -306,61 +287,3 @@ if train_flag:
             print(f'Early stopping at epoch {epoch+1}')
             break
         print(f'best_val_loss {best_val_loss}')
-
-# Save the final model checkpoint
-    # save_checkpoint(num_epochs, model, optimizer, checkpoint_file)
-if test_flag:
-    model.eval()
-    se = 0
-    samples_count = 0
-
-
-    # Assuming y_hat is your tensor with the same shape [5, 5, 125]
-
-    # Create a directory to save the visualizations
-    output_folder = "visualizations/test/"+model_name
-
-    os.makedirs(output_folder, exist_ok=True)
-
-    with torch.no_grad():
-        for images, labels in test_loader:
-            images = images.to(device)
-            labels = labels.to(device)
-
-            y_hat = model(images)
-            print(y_hat.shape)
-            loss = criterion(y_hat, labels)
-
-            se += (loss.item() * labels.size(0))
-            samples_count += labels.size(0)
-
-            # Reshape labels and y_hat
-        labels = labels.view(labels.size(0), 5, 100)
-        y_hat = y_hat.view(y_hat.size(0), 5, 100)
-
-            # for i in range(labels.size(0)):  # Loop through each sample in the batch
-        label_frame = labels[i]  # Get the label frame for this sample
-        y_hat_frame = y_hat[i]  # Get the corresponding y_hat frame
-
-        # Create subfolders for each sample
-        sample_folder = os.path.join(output_folder, f"sample_{i}")
-        os.makedirs(sample_folder, exist_ok=True)
-
-        # Visualize and save each label and y_hat frame
-        for j in range(5):  # Loop through each frame in the sample
-            label_array = label_frame[j].cpu().detach().numpy()  # Convert to NumPy array
-            y_hat_array = y_hat_frame[j].cpu().detach().numpy()  # Convert to NumPy array
-
-            # Plot both label and y_hat arrays in the same figure
-            plt.figure(figsize=(8, 4))
-            plt.plot(label_array, label="Label Array")
-            plt.plot(y_hat_array, label="y_hat Array")
-            plt.title(f"Frame {j}")
-            plt.legend()  # Add a legend to differentiate between Label Array and y_hat Array
-
-            # Save the figure
-            plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
-            plt.close()
-
-    mse = se / samples_count
-    print(f"MSE of test data: {mse:.3f}")
