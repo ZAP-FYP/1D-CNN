@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 def get_X_y(prev_frames, future_frames):
     X_arr=[]
     y_arr=[]
-    directory_path = '../YOLOPv2-1D_Coordinates/data_npy'
+    directory_path = 'data_npy'
 
     filenames = os.listdir(directory_path)
     print(filenames)
@@ -119,3 +119,65 @@ def generate_simple_frames():
     plt.ylabel('Value')
     plt.legend()
     plt.show()
+
+def generate_base_frame(frame_length, car_width):
+    base_frame = np.zeros(frame_length)
+    
+    # Calculate the starting position of the car
+    car_start = (frame_length - car_width) // 1
+    
+    # Create a rectangle representing the car
+    base_frame[car_start:car_start + car_width] = 1
+    
+    return base_frame
+
+# Function to generate a frame with movement
+def generate_moved_frame(base_frame, horizontal_velocity, vertical_velocity):
+    # Copy the base frame
+    moved_frame = np.copy(base_frame)
+    
+    # Move the frame based on the velocities
+    if horizontal_velocity > 0:
+        # Check if moving would exceed the frame size
+        if np.any(moved_frame[:-horizontal_velocity]):
+            # If so, move to the rightmost position
+            moved_frame = np.roll(base_frame, shift=-horizontal_velocity)
+        else:
+            # Otherwise, move as usual
+            moved_frame[horizontal_velocity:] = base_frame[:-horizontal_velocity]
+    elif horizontal_velocity < 0:
+        # Check if moving would exceed the frame size
+        if np.any(moved_frame[-horizontal_velocity:]):
+            # If so, move to the leftmost position
+            moved_frame = np.roll(base_frame, shift=-horizontal_velocity)
+        else:
+            # Otherwise, move as usual
+            moved_frame[:horizontal_velocity] = base_frame[-horizontal_velocity:]
+    
+    # Increase all values when moving vertically
+    moved_frame += vertical_velocity
+    
+    return moved_frame
+
+
+# Function to visualize frames
+def visualize_frames(frames, title='Sequence of Frames with Car Movement', save_path=None):
+    plt.figure(figsize=(60, 25))
+    for i, frame in enumerate(frames):
+        plt.plot(frame, label=f'Frame {i + 1}')
+
+        # Set y-axis limits and aspect ratio
+        plt.ylim([-1, np.max(frames) + 1])
+        plt.gca().set_aspect('equal', adjustable='box')
+
+        plt.title(title)
+        plt.xlabel('Position')
+        plt.ylabel('Value')
+        plt.legend()
+
+    if save_path:
+        plt.savefig(save_path)
+        print(f"Figure saved to: {save_path}")
+    else:
+        plt.show()
+
