@@ -16,11 +16,9 @@ from torchsummary import summary
 from data_creator import get_X_y
 
 import sys
-model_name = "ConvLSTM/2ChannelCNN_GA_new"
+model_name = "ConvLSTM/LSTM-12"
 
-num_epochs = 1000
-batch_size = 25
-learning_rate = 0.001
+
 
 checkpoint_file = 'model/ConvLSTM/'+model_name+'/model_checkpoint.pth'
 if not os.path.exists("model/"+model_name):
@@ -53,18 +51,20 @@ class VideoDataset(Dataset):
         return self.n_samples
 
 class ConvLSTM1D(nn.Module):
-    def __init__(self, input_size, hidden_size, kernel_size, num_layers):
+    def __init__(self, input_size, hidden_size, kernel_size, num_layers, bidirectional=True):
         super(ConvLSTM1D, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.kernel_size = kernel_size
         self.num_layers = num_layers
+        self.bidirectional = bidirectional
 
         # Convolutional LSTM layers
-        self.conv_lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.conv_lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=bidirectional)
 
-        # Fully connected layer to map the LSTM output to the desired output size
-        self.fc = nn.Linear(hidden_size, input_size)
+                # Adjust the size of the fully connected layer output accordingly
+        fc_input_size = 2 * hidden_size if bidirectional else hidden_size
+        self.fc = nn.Linear(fc_input_size, input_size)
 
     def forward(self, x):
         # Input shape: (batch_size, sequence_length, input_size)
@@ -73,8 +73,12 @@ class ConvLSTM1D(nn.Module):
 
         # Initialize hidden and cell states
         batch_size, _, _ = x.size()
-        h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
-        c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
+        # Initialize hidden and cell states
+        num_directions = 2 if self.bidirectional else 1
+        h0 = torch.zeros(self.num_layers * num_directions, batch_size, self.hidden_size).to(x.device)
+        c0 = torch.zeros(self.num_layers * num_directions, batch_size, self.hidden_size).to(x.device)
+        # h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
+        # c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
 
         # ConvLSTM forward pass
         lstm_out, _ = self.conv_lstm(x, (h0, c0))
@@ -87,25 +91,13 @@ class ConvLSTM1D(nn.Module):
         # Fully connected layer
         output = self.fc(lstm_last_output)
 
-        print("Output Shape:", output.shape)
+        # print("Output Shape:", output.shape)
 
         return output
 
-input_size = 100
-hidden_size = 50
-kernel_size = 3
-num_layers = 3
-model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
-
-
-
-# Modify the following lines accordingly
-# in_channels = 20
-# in_seq_len = 100
-# hidden_size = 100
-# kernel_size = 3
-# output_size = 100
-
+num_epochs = 1000
+batch_size = 25
+learning_rate = 0.001
 input_size = 100
 hidden_size = 50
 kernel_size = 3
@@ -203,14 +195,14 @@ if train_flag:
         for i, (images, labels) in enumerate(train_loader):
             images = images.to(device)
             labels = labels.to(device)
-            print(f"images.size() {images.size()}")
+            # print(f"images.size() {images.size()}")
 
             y_hat = model(images)
             # Reshape y_hat to match the size of labels along the second dimension
             # y_hat_reshaped = y_hat.view(labels.size(0), labels.size(1), -1)
-            print(f"Size of y_hat: {y_hat.size()}")
+            # print(f"Size of y_hat: {y_hat.size()}")
             # print(f"Size of y_hat_reshaped: {y_hat_reshaped.size()}")
-            print(f"Size of labels: {labels.size()}")   
+            # print(f"Size of labels: {labels.size()}")   
             loss = criterion(y_hat, labels)
             train_loss += loss.item()
 
