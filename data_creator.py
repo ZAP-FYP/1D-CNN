@@ -2,13 +2,52 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+def visualize(x, y, output_folder):
+    num_samples, num_frames_x, frame_length_x = x.shape
+    _, num_frames_y, frame_length_y = y.shape 
+
+    for sample_index in range(num_samples):
+        sample_folder = os.path.join(output_folder, f"sample_{sample_index}")
+        os.makedirs(sample_folder, exist_ok=True)
+
+        plt.figure(figsize=(15, 4))
+
+        # Plot x
+        for frame_index in range(num_frames_x):
+            x_frame = x[sample_index, frame_index]
+            plt.plot(x_frame, label=f'Sample {sample_index}, Frame {frame_index} - Input (x)')
+
+        # Plot y
+        for frame_index in range(num_frames_y):
+            y_frame = y[sample_index, frame_index]
+            plt.plot(y_frame, label=f'Sample {sample_index}, Frame {frame_index} - Output (y)', color='red')
+
+        plt.xlabel('Time Steps')
+        plt.ylabel('Values')
+        plt.legend()
+
+        plt.tight_layout()
+
+        # Save the figure
+        plt.savefig(os.path.join(sample_folder, f"sample_{sample_index}_visualization.png"))
+        plt.close()
+
+
+
+
+
 
 def get_X_y(prev_frames, future_frames):
     X_arr=[]
     y_arr=[]
     directory_path = 'data_npy'
 
-    filenames = os.listdir(directory_path)
+    # filenames = os.listdir(directory_path)
+    filenames = [f for f in os.listdir(directory_path) if not f.startswith(".DS_Store")]
+
     print(filenames)
 
     for _file in filenames:
@@ -17,7 +56,7 @@ def get_X_y(prev_frames, future_frames):
 
         window_size = prev_frames + future_frames
         X = [X_file[i:i+prev_frames] for i in range(len(X_file[:-window_size]))]
-        y = [[X_file[i+prev_frames+future_frames-1]] for i in range(len(X_file[:-window_size]))]
+        y = [X_file[(i+prev_frames):(i+prev_frames+future_frames)] for i in range(len(X_file[:-window_size]))]
 
         X_arr.extend(X)
         y_arr.extend(y)
@@ -30,6 +69,11 @@ def get_X_y(prev_frames, future_frames):
     print(f"Shape of X: {shape_X}")
     print(f"Shape of y: {shape_y}")
 
+
+    # output_folder_example = "samples"
+
+    # visualize(X_arr, y_arr, output_folder_example)
+        
     return X_arr, y_arr
 
 
@@ -124,7 +168,7 @@ def generate_base_frame(frame_length, car_width):
     base_frame = np.zeros(frame_length)
     
     # Calculate the starting position of the car
-    car_start = (frame_length - car_width) // 1
+    car_start = (frame_length - car_width) // 2
     
     # Create a rectangle representing the car
     base_frame[car_start:car_start + car_width] = 1
