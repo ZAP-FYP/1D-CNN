@@ -65,13 +65,15 @@ def save_checkpoint(epoch, model, optimizer, filename):
 
 
 def visualize(viz_labels, viz_outputs, output_folder):
-    labels = viz_labels.view(viz_labels.size(0), 1, 100)
-    y_hat = viz_outputs.view(viz_outputs.size(0), 1, 100)
 
     if n_th_frame:
+        labels = viz_labels.view(viz_labels.size(0), 1, 100)
+        y_hat = viz_outputs.view(viz_outputs.size(0), 1, 100)
         outer_loop = 1
         inner_loop = 1
     else:
+        labels = viz_labels.view(viz_labels.size(0), future_f, 100)
+        y_hat = viz_outputs.view(viz_outputs.size(0), future_f, 100)
         outer_loop = labels.size(0)
         inner_loop = future_f
 
@@ -114,11 +116,11 @@ else:
 val_idx = int(idx* 0.80)
 
 if DRR != 0:
-    train_dataset = VideoDataset(X[::DRR], y[::DRR]) 
-    validation_dataset = VideoDataset(X[val_idx::DRR], y[val_idx::DRR])
+    train_dataset = VideoDataset(X[::DRR], flatten_y[::DRR]) 
+    validation_dataset = VideoDataset(X[val_idx::DRR], flatten_y[val_idx::DRR])
 else:
-    train_dataset = VideoDataset(X[::], y[::]) 
-    validation_dataset = VideoDataset(X[val_idx::], y[val_idx::])
+    train_dataset = VideoDataset(X[::], flatten_y[::]) 
+    validation_dataset = VideoDataset(X[val_idx::], flatten_y[val_idx::])
 test_dataset = VideoDataset(X[idx:], flatten_y[idx:])
 
 print(f"Len of train_dataset X: {len(train_dataset)}")
