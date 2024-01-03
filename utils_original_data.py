@@ -110,7 +110,7 @@ def visualize(viz_labels, viz_outputs, output_folder):
 
 
 
-X, y = get_X_y(10, 5)
+X, y = get_X_y(10, 5, n_th_frame)
 flatten_y = y.reshape((len(y), -1))
 count, in_channels, in_seq_len = X.shape
 

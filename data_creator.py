@@ -40,10 +40,10 @@ def visualize(x, y, output_folder):
 
 
 
-def get_X_y(prev_frames, future_frames):
+def get_X_y(prev_frames, future_frames, n_th_frame):
     X_arr=[]
     y_arr=[]
-    directory_path = 'data_npy'
+    directory_path = '../YOLOPv2-1D_Coordinates/data_npy'
 
     # filenames = os.listdir(directory_path)
     filenames = [f for f in os.listdir(directory_path) if not f.startswith(".DS_Store")]
@@ -56,7 +56,11 @@ def get_X_y(prev_frames, future_frames):
 
         window_size = prev_frames + future_frames
         X = [X_file[i:i+prev_frames] for i in range(len(X_file[:-window_size]))]
-        y = [X_file[(i+prev_frames):(i+prev_frames+future_frames)] for i in range(len(X_file[:-window_size]))]
+
+        if n_th_frame:
+            y = [X_file[i+prev_frames+future_frames] for i in range(len(X_file[:-window_size]))]
+        else:
+            y = [X_file[(i+prev_frames):(i+prev_frames+future_frames)] for i in range(len(X_file[:-window_size]))]
 
         X_arr.extend(X)
         y_arr.extend(y)

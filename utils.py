@@ -102,7 +102,7 @@ def visualize(viz_labels, viz_outputs, output_folder):
 
 
 
-X, y = get_X_y(prev_f, future_f)
+X, y = get_X_y(prev_f, future_f, n_th_frame)
 
 flatten_y = y.reshape((len(y), -1))
 
@@ -137,15 +137,13 @@ test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=Fa
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-# model = ConvNet(in_channels, in_seq_len).to(device)
+# input_size = 100
+# hidden_size = 50
+# kernel_size = 3
+# num_layers = 3
+# model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
 
-
-input_size = 100
-hidden_size = 50
-kernel_size = 3
-num_layers = 3
-model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
-
+model = ConvNet(in_channels, in_seq_len).to(device)
 
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
