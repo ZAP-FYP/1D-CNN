@@ -16,7 +16,7 @@ from torchsummary import summary
 from data_creator import get_X_y
 
 import sys
-model_name = "ConvLSTM/LSTM-12"
+model_name = "ConvLSTM/LSTM-13"
 
 
 
