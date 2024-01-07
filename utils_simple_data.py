@@ -222,7 +222,7 @@ test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=Fa
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-model = ConvNet(in_channels, in_seq_len).to(device)
+model = ConvNet(in_channels, in_seq_len, 5).to(device)
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 

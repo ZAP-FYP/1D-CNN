@@ -145,7 +145,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # num_layers = 3
 # model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
 
-model = ConvNet(in_channels, in_seq_len).to(device)
+model = ConvNet(in_channels, in_seq_len, 5).to(device)
 
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)

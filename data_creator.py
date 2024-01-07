@@ -43,12 +43,12 @@ def visualize(x, y, output_folder):
 def get_X_y(prev_frames, future_frames, n_th_frame):
     X_arr=[]
     y_arr=[]
-    directory_path = '../YOLOPv2-1D_Coordinates/data_npy'
+    directory_path = '../YOLOPv2-1D_Coordinates/BDD_all'
 
     # filenames = os.listdir(directory_path)
     filenames = [f for f in os.listdir(directory_path) if not f.startswith(".DS_Store")]
 
-    print(filenames)
+    # print(filenames)
 
     for _file in filenames:
         file = directory_path+"/"+_file
