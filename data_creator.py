@@ -175,7 +175,7 @@ def generate_base_frame(frame_length, car_width):
     car_start = (frame_length - car_width) // 2
     
     # Create a rectangle representing the car
-    base_frame[car_start:car_start + car_width] = 1
+    base_frame[car_start:car_start + car_width] = 10
     
     return base_frame
 

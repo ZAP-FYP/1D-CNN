@@ -39,8 +39,12 @@ class Tee(object):
     def flush(self) :
         for f in self.files:
             f.flush()
-
-
+checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
+if not os.path.exists("model/"+model_name):
+    os.makedirs("model/"+model_name)
+f = open('model/'+model_name+'/log.txt', 'w')
+original = sys.stdout
+sys.stdout = Tee(sys.stdout, f)
 class VideoDataset(Dataset):
     def __init__(self, X, y):
         self.x = torch.from_numpy(X).float().requires_grad_()
@@ -119,10 +123,10 @@ min_velocity = 3
 max_velocity = 10
 
 # Generate frames with mixed movements
-num_frames = 60
+num_frames = 500
 frames = [base_frame]
 # Define the pattern
-acceleration_frames = 60
+acceleration_frames = 300
 constant_velocity_frames = 0
 deceleration_frames = 0
 
@@ -140,7 +144,9 @@ velocity_sequence = np.tile(pattern, num_frames // len(pattern))
 for i in range(num_frames):
     # horizontal_velocity = np.random.randint(-max_velocity, max_velocity + 1)
     horizontal_velocity = 0
-    vertical_velocity = velocity_sequence[i]
+    vertical_velocity = 1
+    # vertical_velocity = velocity_sequence[i]
+
     frame = generate_moved_frame(frames[-1], horizontal_velocity, vertical_velocity)
     frames.append(frame)
 
@@ -155,9 +161,9 @@ window_x = 10
 window_y = 5
 
 # Split frames into train and test sets
-train_frames = frames[:20]  # Adjust as needed
-val_frames = frames[20:40]
-test_frames = frames[40:]
+train_frames = frames[:480]  # Adjust as needed
+val_frames = frames[480:]
+test_frames = frames[480:]
 
 x_train = np.array([train_frames[i:i + window_x] for i in range(len(train_frames) - window_x - window_y)])
 y_train = np.array([train_frames[i + window_x:i + window_x + window_y] for i in range(len(train_frames) - window_x - window_y)])
@@ -169,9 +175,12 @@ x_test = np.array([test_frames[i:i + window_x] for i in range(len(test_frames) -
 y_test = np.array([test_frames[i + window_x:i + window_x + window_y] for i in range(len(test_frames) - window_x - window_y)])
 
 # Duplicate the training set
-num_duplicates = 200
+num_duplicates = 3
 x_train_duplicate = np.tile(x_train, (num_duplicates, 1, 1))
 y_train_duplicate = np.tile(y_train, (num_duplicates, 1, 1))
+
+# x_train_duplicate = x_train
+# y_train_duplicate = y_train
 
 # Print the shapes of the NumPy arrays
 print("X_train_duplicate_shape:", x_train_duplicate.shape)
@@ -222,7 +231,12 @@ test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=Fa
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-model = ConvNet(in_channels, in_seq_len).to(device)
+# model = ConvNet(in_channels, in_seq_len).to(device)
+input_size = 100
+hidden_size = 50
+kernel_size = 3
+num_layers = 3
+model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -231,13 +245,13 @@ current_epoch = 0
 total_steps = 0
 
 
-checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
-if not os.path.exists("model/"+model_name):
-    os.makedirs("model/"+model_name)
+# checkpoint_file = 'model/'+model_name+'/model_checkpoint.pth'
+# if not os.path.exists("model/"+model_name):
+#     os.makedirs("model/"+model_name)
 
-f = open('model/'+model_name+'/log.txt', 'w')
-original = sys.stdout
-sys.stdout = Tee(sys.stdout, f)
+# f = open('model/'+model_name+'/log.txt', 'w')
+# original = sys.stdout
+# sys.stdout = Tee(sys.stdout, f)
 
 if os.path.isfile(checkpoint_file):
     print("Loading saved model...")
