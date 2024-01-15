@@ -139,7 +139,7 @@ velocity_sequence = np.tile(pattern, num_frames // len(pattern))
 # Generate frames based on the velocity sequence
 for i in range(num_frames):
     # horizontal_velocity = np.random.randint(-max_velocity, max_velocity + 1)
-    horizontal_velocity = 0
+    horizontal_velocity =  1
     vertical_velocity = velocity_sequence[i]
     frame = generate_moved_frame(frames[-1], horizontal_velocity, vertical_velocity)
     frames.append(frame)
@@ -222,7 +222,7 @@ test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=Fa
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-model = ConvNet(in_channels, in_seq_len, 5).to(device)
+model = ConvNet(in_channels, in_seq_len, 7).to(device)
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
