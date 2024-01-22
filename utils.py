@@ -13,7 +13,7 @@ import os
 from decouple import config
 from datetime import datetime
 from torchsummary import summary
-from data_creator import get_X_y
+from data_creator import get_X_y, create_averaged_frames
 from cnn import ConvNet
 from CnvLstm import ConvLSTM1D
 import sys
@@ -106,9 +106,11 @@ def visualize(viz_labels, viz_outputs, output_folder):
 
 X, y = get_X_y(prev_f, future_f, n_th_frame)
 
-flatten_y = y.reshape((len(y), -1))
+X_avg, y_avg = create_averaged_frames(X, y, DRR)
 
-count, in_channels, in_seq_len = X.shape
+flatten_y = y_avg.reshape((len(y_avg), -1))
+
+count, in_channels, in_seq_len = X_avg.shape
 if not test_flag:
     idx = int(count)
 else:
@@ -116,8 +118,11 @@ else:
 val_idx = int(idx* 0.80)
 
 if DRR != 0:
-    train_dataset = VideoDataset(X[::DRR], flatten_y[::DRR]) 
-    validation_dataset = VideoDataset(X[val_idx::DRR], flatten_y[val_idx::DRR])
+    # train_dataset = VideoDataset(X_avg[::DRR], flatten_y[::DRR]) 
+    train_dataset = VideoDataset(X_avg, flatten_y) 
+    # validation_dataset = VideoDataset(X_avg[val_idx::DRR], flatten_y[val_idx::DRR])
+    validation_dataset = VideoDataset(X_avg[val_idx:], flatten_y[val_idx:])
+
 else:
     train_dataset = VideoDataset(X[::], flatten_y[::]) 
     validation_dataset = VideoDataset(X[val_idx::], flatten_y[val_idx::])
@@ -126,6 +131,7 @@ test_dataset = VideoDataset(X[idx:], flatten_y[idx:])
 print(f"Len of train_dataset X: {len(train_dataset)}")
 print(f"Len of validation_dataset y: {len(validation_dataset)}")
 print(f"Len of test_dataset y: {len(test_dataset)}")
+
 
 
 num_epochs = 1000

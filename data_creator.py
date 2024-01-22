@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-
+import random
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -229,3 +229,56 @@ def visualize_frames(frames, title='Sequence of Frames with Car Movement', save_
     else:
         plt.show()
 
+def create_averaged_frames(data, target, drr):
+    averaged_frames = []
+    averaged_targets = []
+
+    for i in range(0, len(data), drr):
+        frames_to_average = [i + drr // 4, i + drr // 2, i + (3 * drr) // 4, i + drr - 1]
+        valid_frames = [frame for frame in frames_to_average if 0 <= frame < len(data)]
+        non_zero_frames_data = [frame for frame in valid_frames if not np.all(data[frame] == 0)]
+        non_zero_frames_target = [frame for frame in valid_frames if not np.all(target[frame] == 0)]
+        if non_zero_frames_data:
+            averaged_frame = data[non_zero_frames_data].mean(axis=0)
+            averaged_frames.append(averaged_frame)
+        
+        if non_zero_frames_target:
+            averaged_target = target[non_zero_frames_target].mean(axis=0)
+            averaged_targets.append(averaged_target)
+            
+        # print("averaged_frame", (averaged_frame[0]))
+        # print("non_zero_frames_data", data[non_zero_frames_data].shape)
+
+        save_folder = "averaged_frames"
+
+        if i in random.sample(range(0, len(data), drr), 5):
+            for j in range(data[non_zero_frames_data].shape[1]):  # Iterate through the first dimension
+                sample_folder = os.path.join(save_folder, f"frame_{j}")
+                os.makedirs(sample_folder, exist_ok=True)
+                plt.figure()
+
+                for k in range(data[non_zero_frames_data].shape[0]):  # Iterate through the second dimension
+                    # Plot the 100-array for each of the 4 instances
+                    plt.plot(data[non_zero_frames_data][k, j, :], label=f'Instance {j+1}, Index {k+1}', color='black')
+                
+                plt.plot(averaged_frame[j], label=f'averaged_frame_{i}', color='red')
+
+                plt.title(f'Non-Zero Frames Data - Instance {j+1}')
+                plt.savefig(os.path.join(sample_folder, f'averaged_frame_{i}.png'))
+                plt.close()
+
+        # if non_zero_frames_target:
+        #     averaged_target = target[non_zero_frames_target].mean(axis=0)
+        #     averaged_targets.append(averaged_target)
+
+        #     # Plot and save visualization
+        #     plt.figure()
+        #     plt.plot(averaged_frames)  # Assuming the frame is grayscale
+        #     plt.title(f'Averaged Target - Index {i}')
+        #     plt.savefig(os.path.join(save_folder, f'averaged_target_{i}.png'))
+        #     plt.close()
+
+    averaged_data = np.array(averaged_frames)
+    averaged_target = np.array(averaged_targets)
+
+    return averaged_data, averaged_target
