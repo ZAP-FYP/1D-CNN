@@ -17,8 +17,8 @@ from data_creator import generate_base_frame,generate_moved_frame,visualize_fram
 from cnn import ConvNet
 from CnvLstm import ConvLSTM1D
 import sys
-
-
+import torchinfo
+import random
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
 full_data_flag = config('FULL_DATA_FLAG', cast=bool)
@@ -113,17 +113,21 @@ def visualize(viz_labels, viz_outputs, output_folder):
 
 # Set the length of the frame and the width of the car
 frame_length = 100
-car_width = 20
+car_width = 20 # car_width = 20
 
 # Generate the base frame with a car
 base_frame = generate_base_frame(frame_length, car_width)
+save_directory = "frames_plots"
 
+save_filename="base_frame_plot.png"
+save_path = os.path.join(save_directory, save_filename)
+visualize_frames([base_frame],save_path=save_path)
 # Initialize parameters for car movement
 min_velocity = 3
 max_velocity = 10
 
 # Generate frames with mixed movements
-num_frames = 500
+num_frames = 40
 frames = [base_frame]
 # Define the pattern
 acceleration_frames = 300
@@ -143,8 +147,8 @@ velocity_sequence = np.tile(pattern, num_frames // len(pattern))
 # Generate frames based on the velocity sequence
 for i in range(num_frames):
     # horizontal_velocity = np.random.randint(-max_velocity, max_velocity + 1)
-    horizontal_velocity = 0
-    vertical_velocity = 1
+    horizontal_velocity = 1
+    vertical_velocity = 0
     # vertical_velocity = velocity_sequence[i]
 
     frame = generate_moved_frame(frames[-1], horizontal_velocity, vertical_velocity)
@@ -161,9 +165,9 @@ window_x = 10
 window_y = 5
 
 # Split frames into train and test sets
-train_frames = frames[:480]  # Adjust as needed
-val_frames = frames[480:]
-test_frames = frames[480:]
+train_frames = frames[:]  # Adjust as needed
+val_frames = frames[-20:]
+test_frames = frames[-20:]
 
 x_train = np.array([train_frames[i:i + window_x] for i in range(len(train_frames) - window_x - window_y)])
 y_train = np.array([train_frames[i + window_x:i + window_x + window_y] for i in range(len(train_frames) - window_x - window_y)])
@@ -175,7 +179,7 @@ x_test = np.array([test_frames[i:i + window_x] for i in range(len(test_frames) -
 y_test = np.array([test_frames[i + window_x:i + window_x + window_y] for i in range(len(test_frames) - window_x - window_y)])
 
 # Duplicate the training set
-num_duplicates = 3
+num_duplicates = 20
 x_train_duplicate = np.tile(x_train, (num_duplicates, 1, 1))
 y_train_duplicate = np.tile(y_train, (num_duplicates, 1, 1))
 
@@ -221,7 +225,7 @@ print(f"Len of test_dataset y: {len(test_dataset)}")
 
 
 num_epochs = 1000
-batch_size = 5
+batch_size = 25
 learning_rate = 0.001
 
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
@@ -233,7 +237,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # model = ConvNet(in_channels, in_seq_len).to(device)
 input_size = 100
-hidden_size = 50
+hidden_size = 500
 kernel_size = 3
 num_layers = 3
 model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
@@ -260,7 +264,8 @@ if os.path.isfile(checkpoint_file):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     current_epoch = checkpoint['epoch']
 # print(f"Model summary : {summary(model, (in_channels, in_seq_len))}")
-
+# torchinfo.summary(model, (in_channels, 10, 100), device="cpu")
+print(model)
 
 
 if train_flag:

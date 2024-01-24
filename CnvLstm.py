@@ -39,7 +39,7 @@ import torch.nn as nn
 #         return output
 
 class ConvLSTM1D(nn.Module):
-    def __init__(self, input_size, hidden_size, kernel_size, num_layers, bidirectional=True):
+    def __init__(self, input_size, hidden_size, kernel_size, num_layers, bidirectional=False):
         super(ConvLSTM1D, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -48,8 +48,12 @@ class ConvLSTM1D(nn.Module):
         self.bidirectional = bidirectional
 
         # Convolutional LSTM layers
+        self.conv_layers = nn.Sequential(
+            nn.Conv1d(in_channels=10, out_channels=1, kernel_size=5, stride=1, padding=2),
+            nn.ReLU()
+        )
         self.conv_lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=bidirectional)
-
+        
                 # Adjust the size of the fully connected layer output accordingly
         fc_input_size = 2 * hidden_size if bidirectional else hidden_size
         self.fc = nn.Linear(fc_input_size, 500)
@@ -67,6 +71,7 @@ class ConvLSTM1D(nn.Module):
         c0 = torch.zeros(self.num_layers * num_directions, batch_size, self.hidden_size).to(x.device)
         # h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
         # c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
+        x = self.conv_layers(x)
 
         # ConvLSTM forward pass
         lstm_out, _ = self.conv_lstm(x, (h0, c0))
