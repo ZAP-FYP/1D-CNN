@@ -127,7 +127,9 @@ min_velocity = 3
 max_velocity = 10
 
 # Generate frames with mixed movements
-num_frames = 40
+# num_frames = 40
+num_frames = 50
+
 frames = [base_frame]
 # Define the pattern
 acceleration_frames = 300
@@ -148,7 +150,7 @@ velocity_sequence = np.tile(pattern, num_frames // len(pattern))
 for i in range(num_frames):
     # horizontal_velocity = np.random.randint(-max_velocity, max_velocity + 1)
     horizontal_velocity = 1
-    vertical_velocity = 0
+    vertical_velocity = 1
     # vertical_velocity = velocity_sequence[i]
 
     frame = generate_moved_frame(frames[-1], horizontal_velocity, vertical_velocity)

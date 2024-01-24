@@ -172,7 +172,9 @@ def generate_base_frame(frame_length, car_width):
     base_frame = np.zeros(frame_length)
     
     # Calculate the starting position of the car
-    car_start = (frame_length - car_width) // 2
+    # car_start = (frame_length - car_width) // 2
+    car_start = frame_length - car_width-5
+
     
     # Create a rectangle representing the car
     base_frame[car_start:car_start + car_width] = 10
