@@ -1,11 +1,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import cv2
-import numpy as np
 import torch
 import torch.nn.functional as F
-import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
@@ -14,7 +11,6 @@ from decouple import config
 from datetime import datetime
 from torchsummary import summary
 from data_creator import generate_base_frame,generate_moved_frame,visualize_frames,get_X_y, create_averaged_frames
-from cnn import ConvNet
 from CnvLstm import ConvLSTM1D
 import sys
 
