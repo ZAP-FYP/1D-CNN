@@ -218,7 +218,7 @@ if train_flag:
 
         train_loss /= len(train_loader)
 
-        save_checkpoint(epoch, model, optimizer, checkpoint_file)
+        # save_checkpoint(epoch, model, optimizer, checkpoint_file)
 
         # Validate the model at the end of each epoch
         with torch.no_grad():
