@@ -121,7 +121,7 @@ save_directory = "frames_plots"
 
 save_filename="base_frame_plot.png"
 save_path = os.path.join(save_directory, save_filename)
-visualize_frames([base_frame],save_path=save_path)
+visualize_frames([base_frame],save_path="visualizations/validation/"+model_name)
 # Initialize parameters for car movement
 min_velocity = 3
 max_velocity = 10
@@ -153,14 +153,14 @@ for i in range(num_frames):
     vertical_velocity = 1
     # vertical_velocity = velocity_sequence[i]
 
-    frame = generate_moved_frame(frames[-1], horizontal_velocity, vertical_velocity)
+    frame = generate_moved_frame(frames[-1], horizontal_velocity, vertical_velocity, noise_flag=True)
     frames.append(frame)
 
 save_directory = "frames_plots"
 os.makedirs(save_directory, exist_ok=True)
 save_filename="frames_plot.png"
 save_path = os.path.join(save_directory, save_filename)
-visualize_frames(frames,save_path=save_path)
+visualize_frames(frames,save_path="visualizations/validation/"+model_name)
 
 # Creating x and y sequences
 window_x = 10

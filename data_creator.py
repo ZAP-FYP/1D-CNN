@@ -43,8 +43,8 @@ def visualize(x, y, output_folder):
 def get_X_y(prev_frames, future_frames, n_th_frame):
     X_arr=[]
     y_arr=[]
-    directory_path = '../YOLOPv2-1D_Coordinates/data_npy'
-
+    directory_path = '../YOLOPv2-1D_Coordinates/train_data/sequential/BDD_1_hour'
+# /Users/springy/Desktop/New Projects/YOLOPv2-1D_Coordinates/train_data/sequential/BDD_1_hour
     # filenames = os.listdir(directory_path)
     filenames = [f for f in os.listdir(directory_path) if not f.startswith(".DS_Store")]
 
@@ -80,7 +80,48 @@ def get_X_y(prev_frames, future_frames, n_th_frame):
         
     return X_arr, y_arr
 
+def create_averaged_frames(data, target, drr):
+    averaged_frames = []
+    averaged_targets = []
 
+    for i in range(0, len(data), drr):
+        frames_to_average = [i + drr // 4, i + drr // 2, i + (3 * drr) // 4, i + drr - 1]
+        valid_frames = [frame for frame in frames_to_average if 0 <= frame < len(data)]
+        non_zero_frames_data = [frame for frame in valid_frames if not np.all(data[frame] == 0)]
+        non_zero_frames_target = [frame for frame in valid_frames if not np.all(target[frame] == 0)]
+        if non_zero_frames_data:
+            averaged_frame = data[non_zero_frames_data].mean(axis=0)
+            averaged_frames.append(averaged_frame)
+        
+        if non_zero_frames_target:
+            averaged_target = target[non_zero_frames_target].mean(axis=0)
+            averaged_targets.append(averaged_target)
+            
+        # print("averaged_frame", (averaged_frame[0]))
+        # print("non_zero_frames_data", data[non_zero_frames_data].shape)
+
+        save_folder = "averaged_frames"
+
+        # if i in random.sample(range(0, len(data), drr), 5):
+        #     for j in range(data[non_zero_frames_data].shape[1]):  # Iterate through the first dimension
+        #         sample_folder = os.path.join(save_folder, f"frame_{j}")
+        #         os.makedirs(sample_folder, exist_ok=True)
+        #         plt.figure()
+
+        #         for k in range(data[non_zero_frames_data].shape[0]):  # Iterate through the second dimension
+        #             # Plot the 100-array for each of the 4 instances
+        #             plt.plot(data[non_zero_frames_data][k, j, :], label=f'Instance {j+1}, Index {k+1}', color='black')
+                
+        #         plt.plot(averaged_frame[j], label=f'averaged_frame_{i}', color='red')
+
+        #         plt.title(f'Non-Zero Frames Data - Instance {j+1}')
+        #         plt.savefig(os.path.join(sample_folder, f'averaged_frame_{i}.png'))
+        #         plt.close()
+
+    averaged_data = np.array(averaged_frames)
+    averaged_target = np.array(averaged_targets)
+
+    return averaged_data, averaged_target
 def get_equidistant_X_y(prev_frames, future_frames):
     X_files=[]
     y_files=[]
@@ -181,8 +222,7 @@ def generate_base_frame(frame_length, car_width):
     
     return base_frame
 
-# Function to generate a frame with movement
-def generate_moved_frame(base_frame, horizontal_velocity, vertical_velocity):
+def generate_moved_frame(base_frame, horizontal_velocity, vertical_velocity, noise_factor=0.1, noise_flag=False):
     # Copy the base frame
     moved_frame = np.copy(base_frame)
     
@@ -206,6 +246,10 @@ def generate_moved_frame(base_frame, horizontal_velocity, vertical_velocity):
     
     # Increase all values when moving vertically
     moved_frame += vertical_velocity
+    if noise_flag:
+        # Add random noise
+        noise = np.random.normal(scale=noise_factor, size=moved_frame.shape)
+        moved_frame += noise
     
     return moved_frame
 
