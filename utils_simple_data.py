@@ -1,11 +1,9 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
@@ -17,8 +15,7 @@ from data_creator import generate_base_frame,generate_moved_frame,visualize_fram
 from cnn import ConvNet
 from CnvLstm import ConvLSTM1D
 import sys
-import torchinfo
-import random
+
 test_flag = config('TEST_FLAG', cast=bool)
 train_flag = config('TRAIN_FLAG', cast=bool)
 full_data_flag = config('FULL_DATA_FLAG', cast=bool)
