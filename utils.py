@@ -1,19 +1,15 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import cv2
-import numpy as np
 import torch
 import torch.nn.functional as F
-import torchvision
-import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 import os
 from decouple import config
 from datetime import datetime
 from torchsummary import summary
-from data_creator import get_X_y
+from data_creator import get_X_y, create_averaged_frames
 from cnn import ConvNet
 from CnvLstm import ConvLSTM1D
 import sys
@@ -28,7 +24,6 @@ future_f=config('FUTURE_FRAMES', cast=int)  #No of future frames to predict
 start_f=config('START_FUTURE', cast=int)    #Startinf future frame
 DRR = config('DATA_REDUCTION_RATE', cast=int)
 model_name = config('MODEL_NAME')
-
 class Tee(object):
     def __init__(self, *files):
         self.files = files
@@ -105,10 +100,11 @@ def visualize(viz_labels, viz_outputs, output_folder):
 
 
 X, y = get_X_y(prev_f, future_f, n_th_frame)
+X_avg, y_avg = create_averaged_frames(X, y, DRR)
 
-flatten_y = y.reshape((len(y), -1))
+flatten_y = y_avg.reshape((len(y_avg), -1))
 
-count, in_channels, in_seq_len = X.shape
+count, in_channels, in_seq_len = X_avg.shape
 if not test_flag:
     idx = int(count)
 else:
@@ -116,8 +112,11 @@ else:
 val_idx = int(idx* 0.80)
 
 if DRR != 0:
-    train_dataset = VideoDataset(X[::DRR], flatten_y[::DRR]) 
-    validation_dataset = VideoDataset(X[val_idx::DRR], flatten_y[val_idx::DRR])
+    # train_dataset = VideoDataset(X_avg[::DRR], flatten_y[::DRR]) 
+    train_dataset = VideoDataset(X_avg, flatten_y) 
+    # validation_dataset = VideoDataset(X_avg[val_idx::DRR], flatten_y[val_idx::DRR])
+    validation_dataset = VideoDataset(X_avg[val_idx:], flatten_y[val_idx:])
+
 else:
     train_dataset = VideoDataset(X[::], flatten_y[::]) 
     validation_dataset = VideoDataset(X[val_idx::], flatten_y[val_idx::])
@@ -139,13 +138,13 @@ test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=Fa
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-# input_size = 100
-# hidden_size = 50
-# kernel_size = 3
-# num_layers = 3
-# model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
+input_size = 100
+hidden_size = 500
+kernel_size = 3
+num_layers = 3
+model = ConvLSTM1D(input_size, hidden_size, kernel_size, num_layers)
 
-model = ConvNet(in_channels, in_seq_len).to(device)
+# model = ConvNet(in_channels, in_seq_len).to(device)
 
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
