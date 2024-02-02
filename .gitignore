@@ -1,6 +1,4 @@
-.data/
-data/
-data
+.DS_Store
 runs
 visualizations
 model
