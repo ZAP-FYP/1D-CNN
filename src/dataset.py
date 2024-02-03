@@ -221,40 +221,27 @@ class VideoFrameDataset:
 
         self.create_dataset()
 
-    def get_X_y(self, prev_frames, future_frames):
-        X_arr = []
-        y_arr = []
-        filenames = [
-            f for f in os.listdir(self.directory_path) if not f.startswith(".DS_Store")
-        ]
+    def get_X_y(self, data, prev_frames, future_frames):
+        
+        window_size = prev_frames + future_frames
+        X = [data[i : i + prev_frames] for i in range(len(data[:-window_size]))]
 
-        for _file in filenames:
-            file = os.path.join(self.directory_path, _file)
-            X_file = np.load(file)
+        if self.n_th_frame:
+            y = [
+                data[i + prev_frames + future_frames]
+                for i in range(len(data[:-window_size]))
+            ]
+        else:
+            y = [
+                data[(i + prev_frames) : (i + prev_frames + future_frames)]
+                for i in range(len(data[:-window_size]))
+            ]
 
-            window_size = prev_frames + future_frames
-            X = [X_file[i : i + prev_frames] for i in range(len(X_file[:-window_size]))]
+        return np.array(X), np.array(y)
 
-            if self.n_th_frame:
-                y = [
-                    X_file[i + prev_frames + future_frames]
-                    for i in range(len(X_file[:-window_size]))
-                ]
-            else:
-                y = [
-                    X_file[(i + prev_frames) : (i + prev_frames + future_frames)]
-                    for i in range(len(X_file[:-window_size]))
-                ]
-
-            X_arr.extend(X)
-            y_arr.extend(y)
-
-        return np.array(X_arr), np.array(y_arr)
-
-    def create_averaged_frames(self, data, target, drr):
+    def create_averaged_frames(self, data, drr):
         averaged_frames = []
-        averaged_targets = []
-
+        
         for i in range(0, len(data), drr):
             frames_to_average = [
                 i + drr // 4,
@@ -268,25 +255,39 @@ class VideoFrameDataset:
             non_zero_frames_data = [
                 frame for frame in valid_frames if not np.all(data[frame] == 0)
             ]
-            non_zero_frames_target = [
-                frame for frame in valid_frames if not np.all(target[frame] == 0)
-            ]
 
             if non_zero_frames_data:
                 averaged_frame = data[non_zero_frames_data].mean(axis=0)
                 averaged_frames.append(averaged_frame)
 
-            if non_zero_frames_target:
-                averaged_target = target[non_zero_frames_target].mean(axis=0)
-                averaged_targets.append(averaged_target)
-
-        return np.array(averaged_frames), np.array(averaged_targets)
+        return np.array(averaged_frames)
+    
 
     def create_dataset(self):
-        X, y = self.get_X_y(self.prev_frames, self.future_frames)
+        data_npy = []
 
-        if self.do_frame_averaging:
-            X, y = self.create_averaged_frames(X, y, self.DRR)
+        filenames = [
+            f for f in os.listdir(self.directory_path) if not f.startswith(".DS_Store")
+        ]
+
+        for _file in filenames:
+            file = os.path.join(self.directory_path, _file)
+            data_file = np.load(file)
+            data_npy.extend(data_file)
+        
+        data_npy = np.array(data_npy)
+        
+        print("all frames numpy:", data_npy.shape)
+
+        if self.do_frame_averaging is True:
+            averaged_frames = self.create_averaged_frames(data_npy, self.DRR)
+            X, y = self.get_X_y(averaged_frames, self.prev_frames, self.future_frames)
+            print("averaged_frames:", averaged_frames.shape)
+        else:
+            X, y = self.get_X_y(data_npy, self.prev_frames, self.future_frames)
+            
+        print(X.shape, y.shape)
+
 
         flatten_y = y.reshape((len(y), -1))
         count, self.in_channels, self.in_seq_len = X.shape

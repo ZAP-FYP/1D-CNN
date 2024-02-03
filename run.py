@@ -35,7 +35,7 @@ if config.dataset_type == 'simple':
     )
 elif config.dataset_type == 'video':
     dataset = VideoFrameDataset(
-        directory_path='BDD_all_copy',
+        directory_path='../YOLOPv2-1D_Coordinates/BDD_all',
         split_ratio=0.80,
         test_flag=config.test_flag,
         DRR=config.DRR,
@@ -45,6 +45,7 @@ elif config.dataset_type == 'video':
         future_frames=config.future_f,
     )
 
+print(config.model_name)
 train(
     dataset,
     criterion,
