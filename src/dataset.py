@@ -131,8 +131,8 @@ class SimpleFrameDataset:
         train_frames, val_frames, test_frames = self.get_split_frames()
 
         self.x_train, self.y_train = self.index_frames(train_frames)
-        self.x_val, self.y_val = self.index_frames(train_frames[-20:-10])
-        self.x_test, self.y_test = self.index_frames(train_frames[-10:])
+        self.x_val, self.y_val = self.index_frames(train_frames[30:50])
+        self.x_test, self.y_test = self.index_frames(train_frames[40:60])
 
     def get_split_frames(self):
         train_frames = self.frames[self.train_frame_start : self.val_frame_start]
