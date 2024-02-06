@@ -316,6 +316,10 @@ class VideoFrameDataset:
             X[idx :: self.DRR], flatten_y[idx :: self.DRR]
         )
         
+        print(f'Train samples {len(self.train_dataset)}')
+        print(f'Validation samples {len(self.validation_dataset)}')
+        print(f'Test samples {len(self.test_dataset)}')
+
     def visualize(x, y, output_folder):
         num_samples, num_frames_x, frame_length_x = x.shape
         _, num_frames_y, frame_length_y = y.shape
