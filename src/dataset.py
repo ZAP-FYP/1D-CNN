@@ -305,6 +305,9 @@ class VideoFrameDataset:
             self.validation_dataset = DrivableAreaDataset(
                 X[val_idx:idx:], flatten_y[val_idx:idx:]
             )
+            self.test_dataset = DrivableAreaDataset(
+                X[idx ::], flatten_y[idx ::]
+            )
         else:
             self.train_dataset = DrivableAreaDataset(
                 X[: val_idx : self.DRR], flatten_y[: val_idx : self.DRR]
@@ -312,9 +315,8 @@ class VideoFrameDataset:
             self.validation_dataset = DrivableAreaDataset(
                 X[val_idx : idx : self.DRR], flatten_y[val_idx : idx : self.DRR]
             )
-
-        self.test_dataset = DrivableAreaDataset(
-            X[idx :: self.DRR], flatten_y[idx :: self.DRR]
+            self.test_dataset = DrivableAreaDataset(
+                X[idx :: self.DRR], flatten_y[idx :: self.DRR]
         )
         
         print(f'Train samples {len(self.train_dataset)}')
