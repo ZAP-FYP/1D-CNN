@@ -279,14 +279,15 @@ class VideoFrameDataset:
         
         print("all frames numpy:", data_npy.shape)
 
-        if self.do_frame_averaging is True:
+        if self.do_frame_averaging:
             averaged_frames = self.create_averaged_frames(data_npy, self.DRR)
             X, y = self.get_X_y(averaged_frames, self.prev_frames, self.future_frames)
             print("averaged_frames:", averaged_frames.shape)
         else:
             X, y = self.get_X_y(data_npy, self.prev_frames, self.future_frames)
-            
-        print(X.shape, y.shape)
+            print("Not averaging")
+        
+        print("averaged X and y:", X.shape, y.shape)
 
 
         flatten_y = y.reshape((len(y), -1))
@@ -299,7 +300,7 @@ class VideoFrameDataset:
 
         val_idx = int(idx * self.split_ratio)
 
-        if self.DRR == 0:
+        if self.DRR == 0 or self.do_frame_averaging:
             self.train_dataset = DrivableAreaDataset(X[:val_idx:], flatten_y[:val_idx:])
             self.validation_dataset = DrivableAreaDataset(
                 X[val_idx:idx:], flatten_y[val_idx:idx:]
