@@ -299,7 +299,7 @@ class VideoFrameDataset:
 
         val_idx = int(idx * self.split_ratio)
 
-        if self.DRR != 0 or self.do_frame_averaging:
+        if self.DRR == 0:
             self.train_dataset = DrivableAreaDataset(X[:val_idx:], flatten_y[:val_idx:])
             self.validation_dataset = DrivableAreaDataset(
                 X[val_idx:idx:], flatten_y[val_idx:idx:]

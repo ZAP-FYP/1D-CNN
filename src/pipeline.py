@@ -55,7 +55,7 @@ def train(
     if train_flag:
         # Define early stopping parameters
         print("Starting training...")
-        patience = 15  # Number of consecutive epochs without improvement
+        patience = 40  # Number of consecutive epochs without improvement
         best_val_loss = float("inf")
         consecutive_no_improvement = 0
         for epoch in range(current_epoch, num_epochs):
