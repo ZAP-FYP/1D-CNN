@@ -15,5 +15,7 @@ class Config:
             self.model_name = config("MODEL_NAME")
             self.do_frame_averaging = config("DO_FRAME_AVERAGING")
             self.dataset_type = config("DATASET_TYPE")
+            self.dataset_path = config("DATASET_PATH")
+
         except UndefinedValueError as e:
             raise ValueError(f"Environment variable {e} is not set.")
