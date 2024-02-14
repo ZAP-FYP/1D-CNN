@@ -239,27 +239,13 @@ class VideoFrameDataset:
 
         return np.array(X), np.array(y)
 
-    def create_averaged_frames(self, data, drr):
+    def create_averaged_frames(self, data, avg_rate):
         averaged_frames = []
+        print("shape before averaging:", data.shape)
         
-        for i in range(0, len(data), drr):
-            frames_to_average = [
-                i + drr // 4,
-                i + drr // 2,
-                i + (3 * drr) // 4,
-                i + drr - 1,
-            ]
-            valid_frames = [
-                frame for frame in frames_to_average if 0 <= frame < len(data)
-            ]
-            non_zero_frames_data = [
-                frame for frame in valid_frames if not np.all(data[frame] == 0)
-            ]
-
-            if non_zero_frames_data:
-                averaged_frame = data[non_zero_frames_data].mean(axis=0)
-                averaged_frames.append(averaged_frame)
-
+        for i in range(0, len(data), avg_rate):
+            averaged_frames.append(data[i:i+avg_rate].mean(axis=0))
+                
         return np.array(averaged_frames)
     
 
@@ -280,7 +266,7 @@ class VideoFrameDataset:
         print("all frames numpy:", data_npy.shape)
 
         if self.frame_avg_rate > 0:
-            averaged_frames = self.create_averaged_frames(data_npy, self.DRR)
+            averaged_frames = self.create_averaged_frames(data_npy, self.frame_avg_rate)
             X, y = self.get_X_y(averaged_frames, self.prev_frames, self.future_frames)
             print("averaged_frames:", averaged_frames.shape)
         elif self.frame_avg_rate == 0:
