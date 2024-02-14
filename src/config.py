@@ -11,9 +11,9 @@ class Config:
             self.prev_f = config("PREV_FRAMES", cast=int)
             self.future_f = config("FUTURE_FRAMES", cast=int)
             self.start_f = config("START_FUTURE", cast=int)
+            self.frame_avg_rate = config("FRAME_AVG_RATE", cast=int)
             self.DRR = config("DATA_REDUCTION_RATE", cast=int)
             self.model_name = config("MODEL_NAME")
-            self.do_frame_averaging = config("DO_FRAME_AVERAGING")
             self.dataset_type = config("DATASET_TYPE")
             self.dataset_path = config("DATASET_PATH")
 

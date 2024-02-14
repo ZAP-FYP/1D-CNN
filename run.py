@@ -35,12 +35,12 @@ if config.dataset_type == 'simple':
     )
 elif config.dataset_type == 'video':
     dataset = VideoFrameDataset(
-        directory_path='../YOLOPv2-1D_Coordinates/BDD_all',
+        directory_path=config.dataset_path,
         split_ratio=0.80,
         test_flag=config.test_flag,
         DRR=config.DRR,
         n_th_frame=config.n_th_frame,
-        do_frame_averaging=config.do_frame_averaging,
+        frame_avg_rate=config.frame_avg_rate,
         prev_frames=config.prev_f,
         future_frames=config.future_f,
     )
