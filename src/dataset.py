@@ -206,7 +206,7 @@ class VideoFrameDataset:
         test_flag=False,
         DRR=0,
         n_th_frame=True,
-        do_frame_averaging=False,
+        frame_avg_rate=0,
         prev_frames=10,
         future_frames=5,
     ):
@@ -215,7 +215,7 @@ class VideoFrameDataset:
         self.test_flag = test_flag
         self.DRR = DRR
         self.n_th_frame = n_th_frame
-        self.do_frame_averaging = do_frame_averaging
+        self.frame_avg_rate = frame_avg_rate
         self.prev_frames = prev_frames
         self.future_frames = future_frames
 
@@ -239,27 +239,13 @@ class VideoFrameDataset:
 
         return np.array(X), np.array(y)
 
-    def create_averaged_frames(self, data, drr):
+    def create_averaged_frames(self, data, avg_rate):
         averaged_frames = []
+        print("shape before averaging:", data.shape)
         
-        for i in range(0, len(data), drr):
-            frames_to_average = [
-                i + drr // 4,
-                i + drr // 2,
-                i + (3 * drr) // 4,
-                i + drr - 1,
-            ]
-            valid_frames = [
-                frame for frame in frames_to_average if 0 <= frame < len(data)
-            ]
-            non_zero_frames_data = [
-                frame for frame in valid_frames if not np.all(data[frame] == 0)
-            ]
-
-            if non_zero_frames_data:
-                averaged_frame = data[non_zero_frames_data].mean(axis=0)
-                averaged_frames.append(averaged_frame)
-
+        for i in range(0, len(data), avg_rate):
+            averaged_frames.append(data[i:i+avg_rate].mean(axis=0))
+                
         return np.array(averaged_frames)
     
 
@@ -279,11 +265,11 @@ class VideoFrameDataset:
         
         print("all frames numpy:", data_npy.shape)
 
-        if self.do_frame_averaging:
-            averaged_frames = self.create_averaged_frames(data_npy, self.DRR)
+        if self.frame_avg_rate > 0:
+            averaged_frames = self.create_averaged_frames(data_npy, self.frame_avg_rate)
             X, y = self.get_X_y(averaged_frames, self.prev_frames, self.future_frames)
             print("averaged_frames:", averaged_frames.shape)
-        else:
+        elif self.frame_avg_rate == 0:
             X, y = self.get_X_y(data_npy, self.prev_frames, self.future_frames)
             print("Not averaging")
         
@@ -300,7 +286,7 @@ class VideoFrameDataset:
 
         val_idx = int(idx * self.split_ratio)
 
-        if self.DRR == 0 or self.do_frame_averaging:
+        if self.DRR == 0:
             self.train_dataset = DrivableAreaDataset(X[:val_idx:], flatten_y[:val_idx:])
             self.validation_dataset = DrivableAreaDataset(
                 X[val_idx:idx:], flatten_y[val_idx:idx:]
