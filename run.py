@@ -46,6 +46,7 @@ elif config.dataset_type == 'video':
     )
 
 print(config.model_name)
+print("nth", config.n_th_frame)
 train(
     dataset,
     criterion,
@@ -57,5 +58,5 @@ train(
     config.n_th_frame,
     config.future_f,
     num_epochs=1000,
-    batch_size=25
+    batch_size=256
 )

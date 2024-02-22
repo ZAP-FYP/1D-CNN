@@ -86,6 +86,7 @@ class ConvLSTM1D(nn.Module):
         ).to(x.device)
         # h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
         # c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(x.device)
+        input_x = x
         x = self.conv_layers(x)
 
         # ConvLSTM forward pass
@@ -96,8 +97,20 @@ class ConvLSTM1D(nn.Module):
         # Take the output of the last time step
         lstm_last_output = lstm_out[:, -1, :]
 
+        # print(lstm_last_output.shape)
+        # print(input_x[:, 4:9, :].shape)
         # Fully connected layer
-        output = self.fc(lstm_last_output)
+        # reshaped = input_x[:, 4:9, :].view(25, 500)
+        # reshaped = torch.flatten(input_x[:, 4:9, :], 1) #take last one 5 times
+        # Get the 9th array in the middle dimension
+        selected_array = input_x[:, -1:, :]
+
+        # Replicate it 5 times along the specified dimension (dimension 1 in this case)
+        reshaped = selected_array.repeat(1, 5, 1)
+        reshaped = torch.flatten(reshaped, 1)
+
+
+        output = self.fc(lstm_last_output) + reshaped
 
         # print("Output Shape:", output.shape)
 
