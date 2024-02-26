@@ -163,7 +163,7 @@ def visualize(viz_labels, viz_outputs, output_folder, n_th_frame, future_f):
         outer_loop = 1
         inner_loop = 1
     else:
-        outer_loop = labels.size(0)
+        outer_loop = labels.size(1)
         inner_loop = future_f
 
     for i in range(outer_loop):
