@@ -63,6 +63,7 @@ def train(
         consecutive_no_improvement = 0
         for epoch in range(current_epoch, num_epochs):
             train_loss = 0.0
+            train_miou = 0.0
 
             for i, (images, labels) in enumerate(train_loader):
                 images = images.to(device)
@@ -78,9 +79,9 @@ def train(
                     for i in range(future_f):
                         label_seg_matrix = torch.tensor(get_segmentation_matrix(label_arrays[i]))
                         # print("label matrix", label_seg_matrix)
-
                         yhat_seg_matrix = torch.tensor(get_segmentation_matrix(y_hat_arrays[i]))
                         # print("yhat matrix", yhat_seg_matrix)
+                        get_seg_viz(label_arrays[i], y_hat_arrays[i])
 
                         iou = calculate_iou(yhat_seg_matrix, label_seg_matrix)
                         # print("iou", iou)
@@ -88,18 +89,14 @@ def train(
                         miou += iou
 
                     miou /= future_f
-                    print("miou", miou)
+                    # print("miou", miou)
 
-                miou_tensor = torch.tensor(miou, requires_grad=True)
+                    train_miou += miou
 
                 loss = criterion(y_hat, labels)
-                # train_loss += miou_tensor.item()
-
+                train_loss += loss.item()
                 optimizer.zero_grad()
-
                 loss.backward()
-                # miou_tensor.backward()
-
                 optimizer.step()
 
                 total_steps += 1
@@ -110,13 +107,15 @@ def train(
                     )
 
             train_loss /= len(train_loader)
-            print("train loss", train_loss)
+            train_miou /= len(train_loader)
+            print(f"train loss: {train_loss:.4f}, train miou: {train_miou:.4f}")
 
             save_checkpoint(epoch, model, optimizer, checkpoint_file)
 
             with torch.no_grad():
                 model.eval()
                 val_loss = 0.0
+                batch_val_miou = 0.0
                 for i, (val_images, val_labels) in enumerate(validation_loader):
                     val_images = val_images.to(device)
                     val_labels = val_labels.to(device)
@@ -127,13 +126,13 @@ def train(
                         val_label_arrays = np.split(val_labels[1].detach().numpy(), future_f)
                         val_y_hat_arrays = np.split(val_outputs[1].detach().numpy(), future_f)
                         
-                        val_miou = 0
+                        val_miou = 0.0
                         for i in range(future_f):
                             val_label_seg_matrix = torch.tensor(get_segmentation_matrix(val_label_arrays[i])) 
                             # print("label matrix", label_seg_matrix)
-
                             val_out_seg_matrix = torch.tensor(get_segmentation_matrix(val_y_hat_arrays[i]))
                             # print("yhat matrix", yhat_seg_matrix)
+                            get_seg_viz(val_label_arrays[i], val_y_hat_arrays[i])
 
                             val_iou = calculate_iou(val_out_seg_matrix, val_label_seg_matrix)
                             # print("iou", iou)
@@ -141,9 +140,10 @@ def train(
                             val_miou += val_iou
 
                         val_miou /= future_f
-                        print("val_miou", val_miou)
+                        # print("val_miou", val_miou)
 
-                    # val_miou_tensor = torch.tensor(val_miou, requires_grad=True)
+                        batch_val_miou += val_miou
+                        # print("batch_val_miou", batch_val_miou)
 
                     val_loss += criterion(val_outputs, val_labels).item()
 
@@ -151,15 +151,16 @@ def train(
                     visualize(labels, y_hat, output_folder, n_th_frame, future_f)
 
                 val_loss /= len(validation_loader)
-                print("val loss", val_loss)
-
+                batch_val_miou /= len(validation_loader)
+                print(f"val loss: {val_loss:.4f}, val miou: {val_miou:.4f}")
 
             print(
-                f"Epoch [{epoch+1}/{num_epochs}], Training Loss: {train_loss:.4f} Validation Loss: {val_loss:.4f}"
+                f"Epoch [{epoch+1}/{num_epochs}], Training Loss: {train_loss:.4f} Validation Loss: {val_loss:.4f}, Training IOU: {train_miou:.4f}, Validation IOU: {batch_val_miou:.4f}"
             )
 
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
+                best_val_miou = val_miou
                 consecutive_no_improvement = 0
                 save_checkpoint(
                     epoch,
@@ -171,10 +172,10 @@ def train(
                 consecutive_no_improvement += 1
 
             if consecutive_no_improvement >= patience:
-                print(f"best_val_loss {best_val_loss}")
+                print(f"best_val_loss {best_val_loss}, best_val_iou {best_val_miou}")
                 print(f"Early stopping at epoch {epoch+1}")
                 break
-            print(f"best_val_loss {best_val_loss}")
+            print(f"best_val_loss {best_val_loss}, best_val_iou {best_val_miou}")
 
     if test_flag:
         model.eval()
@@ -277,3 +278,17 @@ def calculate_iou(y_pred, y_true):
     union = torch.logical_or(y_pred, y_true).sum()
     iou = intersection.float() / union.float()
     return iou.item() 
+
+def get_seg_viz(label_array, pred_array):
+    # Plot the curve and segmentation matrix
+    x_coordinates = np.arange(0, 100)
+    plt.plot(x_coordinates, label_array, label='Curve')
+    plt.plot(x_coordinates, pred_array, label='Curve')
+    plt.fill_between(x_coordinates, 0, label_array, alpha=0.4)
+    plt.fill_between(x_coordinates, 0, pred_array, alpha=0.4)
+    plt.ylim(0, 300)
+    plt.xlabel('X coordinates')
+    plt.ylabel('Y coordinates')
+    plt.legend()
+    plt.savefig(f"curve_segmentation1.png")
+    plt.close()
