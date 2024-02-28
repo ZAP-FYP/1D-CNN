@@ -241,7 +241,7 @@ class VideoFrameDataset:
 
     def create_averaged_frames(self, data, avg_rate):
         averaged_frames = []
-        print("shape before averaging:", data.shape)
+        # print("shape before averaging:", data.shape)
         
         for i in range(0, len(data), avg_rate):
             averaged_frames.append(data[i:i+avg_rate].mean(axis=0))
@@ -250,7 +250,9 @@ class VideoFrameDataset:
     
 
     def create_dataset(self):
-        data_npy = []
+        total_data = []
+        X = []
+        y = []
 
         filenames = [
             f for f in os.listdir(self.directory_path) if not f.startswith(".DS_Store")
@@ -258,23 +260,25 @@ class VideoFrameDataset:
 
         for _file in filenames:
             file = os.path.join(self.directory_path, _file)
-            data_file = np.load(file)
-            data_npy.extend(data_file)
-        
-        data_npy = np.array(data_npy)
-        
-        print("all frames numpy:", data_npy.shape)
+            data_npy = np.load(file)
+            total_data.extend(data_npy)
 
-        if self.frame_avg_rate > 0:
-            averaged_frames = self.create_averaged_frames(data_npy, self.frame_avg_rate)
-            X, y = self.get_X_y(averaged_frames, self.prev_frames, self.future_frames)
-            print("averaged_frames:", averaged_frames.shape)
-        elif self.frame_avg_rate == 0:
-            X, y = self.get_X_y(data_npy, self.prev_frames, self.future_frames)
-            print("Not averaging")
-        
-        print("averaged X and y:", X.shape, y.shape)
+            if self.frame_avg_rate > 0:
+                averaged_frames = self.create_averaged_frames(data_npy, self.frame_avg_rate)
+                X_file, y_file = self.get_X_y(averaged_frames, self.prev_frames, self.future_frames)
+                # print("averaged_frames:", averaged_frames.shape)
+            elif self.frame_avg_rate == 0:
+                X_file, y_file = self.get_X_y(data_npy, self.prev_frames, self.future_frames)
+                # print("Not averaging")
+            
+            X.extend(X_file)
+            y.extend(y_file)
 
+        X = np.array(X)
+        y = np.array(y)
+
+        print("total data: ", np.array(total_data).shape)
+        print(f"X shape: {X.shape}, y shape: {y.shape}")
 
         flatten_y = y.reshape((len(y), -1))
         count, self.in_channels, self.in_seq_len = X.shape
