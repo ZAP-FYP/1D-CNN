@@ -15,7 +15,7 @@ class Config:
             self.DRR = config("DATA_REDUCTION_RATE", cast=int)
             self.model_name = config("MODEL_NAME")
             self.dataset_type = config("DATASET_TYPE")
-            self.dataset_path = config("DATASET_PATH")
+            # self.dataset_path = config("DATASET_PATH")
 
         except UndefinedValueError as e:
             raise ValueError(f"Environment variable {e} is not set.")

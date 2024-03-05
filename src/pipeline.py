@@ -93,9 +93,10 @@ def train(
 
                     val_outputs = model(val_images)
                     val_loss += criterion(val_outputs, val_labels).item()
+                    print(criterion(val_outputs, val_labels).item())
 
                     output_folder = "visualizations/validation/" + model_name
-                    visualize(labels, y_hat, output_folder, n_th_frame, future_f)
+                    visualize(val_images, val_labels, val_outputs, output_folder, n_th_frame, future_f)
 
                 val_loss /= len(validation_loader)
 
@@ -134,6 +135,7 @@ def train(
                 y_hat = model(images)
                 print(y_hat.shape)
                 loss = criterion(y_hat, labels)
+                print(loss)
 
                 se += loss.item() * labels.size(0)
                 samples_count += labels.size(0)
@@ -155,7 +157,7 @@ def save_checkpoint(epoch, model, optimizer, filename):
     torch.save(checkpoint, filename)
 
 
-def visualize(viz_labels, viz_outputs, output_folder, n_th_frame, future_f):
+def visualize(viz_images, viz_labels, viz_outputs, output_folder, n_th_frame, future_f):
     labels = viz_labels.view(viz_labels.size(0), 5, 100)
     y_hat = viz_outputs.view(viz_outputs.size(0), 5, 100)
 
@@ -164,24 +166,46 @@ def visualize(viz_labels, viz_outputs, output_folder, n_th_frame, future_f):
         inner_loop = 1
     else:
         outer_loop = labels.size(0)
+        interval = 10
+        num_iterations = outer_loop // interval
         inner_loop = future_f
 
-    for i in range(outer_loop):
+    for iteration in range(num_iterations):
+        i = iteration * interval
         label_frame = labels[i]
         y_hat_frame = y_hat[i]
+        image_frame = viz_images[i]
 
         sample_folder = os.path.join(output_folder, f"sample_{i}")
         os.makedirs(sample_folder, exist_ok=True)
 
+        fig, axes = plt.subplots(nrows=2, ncols=5, figsize=(15, 6))
+
+        for k in range(10):
+            ax = axes[k // 5, k % 5]  # Accessing subplot axes
+            image = image_frame[k]  # Get the image frame
+            image_array = image.cpu().detach().numpy()
+            ax.plot(image_array, label="Data Array")
+            ax.set_title(f'Data {k+1}')  # Set title for the subplot
+            ax.set_ylim(bottom=0)
+
+
+        plt.tight_layout()  # Adjust layout
+
+        # Save the plot as an image file
+        plt.savefig(os.path.join(sample_folder, f"sample_{i}.png"))
+        plt.close()  # Close the plot after saving
+
         for j in range(inner_loop):
-            label_array = label_frame.cpu().detach().numpy()
-            y_hat_array = y_hat_frame.cpu().detach().numpy()
+            label_array = label_frame[j].cpu().detach().numpy()
+            y_hat_array = y_hat_frame[j].cpu().detach().numpy()
 
             plt.figure(figsize=(8, 4))
-            plt.plot(label_array[j], label="Label Array")
-            plt.plot(y_hat_array[j], label="y_hat Array")
+            plt.plot(label_array, label="Label Array")
+            plt.plot(y_hat_array, label="y_hat Array")
             plt.title(f"Frame {j}")
             plt.legend()
+            plt.ylim(bottom=0)
 
             plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
-            plt.close()
+            plt.close()  # Close the plot after saving

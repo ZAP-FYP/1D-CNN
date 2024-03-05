@@ -226,6 +226,14 @@ class VideoFrameDataset:
         window_size = prev_frames + future_frames
         X = [data[i : i + prev_frames] for i in range(len(data[:-window_size]))]
 
+        # for frame_index, frame in enumerate(X_file):
+            #     if np.all(frame == 0):
+            #         start_index = max(0, frame_index - 10)
+            #         end_index = min(len(X_file), frame_index + 11)
+            #         frames_to_visualize = X_file[start_index:end_index]
+            #         self.visualize_frames(_file, frame_index, frames_to_visualize)
+
+
         if self.n_th_frame:
             y = [
                 data[i + prev_frames + future_frames]
@@ -346,3 +354,28 @@ class VideoFrameDataset:
                 os.path.join(sample_folder, f"sample_{sample_index}_visualization.png")
             )
             plt.close()
+
+    def visualize_frames(self, filename, frame_index, frames):
+        num_frames = len(frames)
+        num_cols = 3
+        num_rows = (num_frames + num_cols - 1) // num_cols  # Calculate number of rows needed
+
+        fig, axes = plt.subplots(num_rows, num_cols, figsize=(15, num_rows * 5))
+
+        for i, ax in enumerate(axes.flat):
+            if i < num_frames:
+                frame = frames[i]
+                if len(frame.shape) == 1:  # Check if the frame is 1D
+                    ax.plot(frame)          # Use plot for 1D arrays
+                    ax.set_title(f'Frame {frame_index - 10 + i}')
+                else:
+                    ax.imshow(frame, cmap='gray')
+                    ax.set_title(f'Frame {frame_index - 10 + i}')
+                ax.axis('off')
+            else:
+                ax.axis('off')  # Turn off empty subplots
+
+        plt.tight_layout()
+        save_path = os.path.join('visualization_folder', f'{filename}_{frame_index}.png')
+        plt.savefig(save_path)
+        plt.close()
