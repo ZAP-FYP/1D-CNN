@@ -46,7 +46,6 @@ elif config.dataset_type == 'video':
     )
 
 print(config.model_name)
-print("nth", config.n_th_frame)
 train(
     dataset,
     criterion,
