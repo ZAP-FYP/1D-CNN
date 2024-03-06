@@ -148,7 +148,7 @@ def train(
                     val_loss += criterion(val_outputs, val_labels).item()
 
                     output_folder = "visualizations/validation/" + model_name
-                    visualize(labels, y_hat, output_folder, n_th_frame, future_f)
+                    visualize(labels, y_hat, output_folder, n_th_frame, future_f, val_miou)
 
                 val_loss /= len(validation_loader)
                 batch_val_miou /= len(validation_loader)
@@ -211,7 +211,7 @@ def save_checkpoint(epoch, model, optimizer, filename):
     torch.save(checkpoint, filename)
 
 
-def visualize(viz_labels, viz_outputs, output_folder, n_th_frame, future_f):
+def visualize(viz_labels, viz_outputs, output_folder, n_th_frame, future_f, val_iou=0):
     labels = viz_labels.view(viz_labels.size(0), 5, 100)
     y_hat = viz_outputs.view(viz_outputs.size(0), 5, 100)
 
@@ -219,7 +219,7 @@ def visualize(viz_labels, viz_outputs, output_folder, n_th_frame, future_f):
         outer_loop = 1
         inner_loop = 1
     else:
-        outer_loop = labels.size(0)
+        outer_loop = labels.size(1)
         inner_loop = future_f
 
     for i in range(outer_loop):
@@ -233,10 +233,20 @@ def visualize(viz_labels, viz_outputs, output_folder, n_th_frame, future_f):
             label_array = label_frame.cpu().detach().numpy()
             y_hat_array = y_hat_frame.cpu().detach().numpy()
 
+            label_seg_matrix = torch.tensor(get_segmentation_matrix(label_array[i]))
+            out_seg_matrix = torch.tensor(get_segmentation_matrix(y_hat_array[i]))
+
+            iou = calculate_iou(out_seg_matrix, label_seg_matrix)
+
             plt.figure(figsize=(8, 4))
+            plt.ylim(0, 400)
             plt.plot(label_array[j], label="Label Array")
             plt.plot(y_hat_array[j], label="y_hat Array")
-            plt.title(f"Frame {j}")
+                    
+            plt.fill_between(np.arange(0, 100), 0, label_array[j], alpha=0.4)
+            plt.fill_between(np.arange(0, 100), 0, y_hat_array[j], alpha=0.4)
+
+            plt.title(f"Frame {j}, iou={iou}")
             plt.legend()
 
             plt.savefig(os.path.join(sample_folder, f"sample_{i}_frame_{j}.png"))
